@@ -130,7 +130,8 @@ the site's. Visitor copy says "human verification"; no vendor name appears in th
 
 ## 7. What the site needs from a release
 
-A `v*` tag here runs `publish-images.yml`, which scans and pushes `docker.io/hybridcloudworks/img-mo-lab-addon` and
+A `v*` tag here runs `publish-images.yml`, which scans and pushes `docker.io/hybridcloudworks/img-mo-lab-addon` (a manual
+run of the same workflow is a dry run: it builds, checks and scans, and pushes nothing) and
 prints `image@sha256:…` in the run summary. The website pins that digest (`addons[].image_digest`) and the version
 (`addons[].image_tag`, also what `/api/health.version` and `X-Addon-Version` report) in `lab-host/ansible/group_vars/all.yml`.
 Nothing else crosses the boundary: no package, no secret, no site credential.

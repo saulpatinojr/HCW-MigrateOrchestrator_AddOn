@@ -117,6 +117,12 @@ the pull request rather than under a new ADR number.
 - **Not executed locally (CI only):** `docker build` of `Dockerfile.lab` and the Trivy scan (no daemon); `publish-images.yml`
   against Docker Hub (the OIDC connection and the `DOCKERHUB_*` variables are owner steps); the website's `addons` role,
   Caddy route and status proxy (Phase 6, website repository); verification against the real siteverify endpoint.
+- **`publish-images.yml` dry run (2026-11-05):** a manual run builds, checks the edition boundary inside the image and
+  scans, and never logs in, pushes or attests; `scripts/check-release-version.mjs` runs before the build in `--rehearse`
+  mode (on a tag, `--tag`). `npm test` covers the guard (`tests/check-release-version.test.mjs`) and the workflow's shape
+  (`tests/security/publish-images-dry-run.test.mjs`, which also runs the gate script with bash); `actionlint` passes. The
+  boundary check inside the image and the skipped push steps are proven only by a run on GitHub (the first dry run on
+  `main` after the merge).
 - **Adopted with upstream v0.3.0** (2026-10-11): `partners={false}` replaces the CSS rule that hid the partner panel and
   `contactPath` + `onNavigate` replace the capture-phase click handler that turned the in-frame `/contact` link into a
   `navigate` request. **Still shims:** the pane derives `working`/`ready` from a `fetchImpl` wrapper around the explorer's

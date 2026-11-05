@@ -72,10 +72,25 @@ gh variable set DOCKERHUB_CONNECTION --repo saulpatinojr/HCW-MigrateOrchestrator
 gh variable set DOCKERHUB_ENABLED --repo saulpatinojr/HCW-MigrateOrchestrator_AddOn --body true
 ```
 
-The first line reads the connection's UUID from the clipboard. Until both are set, `publish-images.yml` skips and the
-website catalogue row stays `coming`.
+The first line reads the connection's UUID from the clipboard. Until both are set, a tag run of `publish-images.yml` builds,
+checks and scans the image but pushes nothing (its log says so in a notice), and the website catalogue row stays `coming`.
 
-**3. Release.** Tag the release here (the current one is `v0.3.1`); the run summary of `publish-images` prints
+**3. Release.** A tag that publishes an image cannot be taken back, so first run the dry run on the commit you mean to
+tag: `publish-images.yml` started by hand builds, checks the edition boundary inside the image and scans it, and never
+logs in, pushes or attests (the Docker connection only trusts tags). Before it builds, `scripts/check-release-version.mjs`
+checks that every file carrying the version agrees, that `CHANGELOG.md` has a dated section for that version and nothing
+left under `## Unreleased`, that the tag `v<version>` does not exist yet, and that the commit is on `main`; a tag run makes
+the same checks on the tag, so a green dry run means the tag run will pass them too. Start it and watch it (PowerShell;
+`gh` must be signed in):
+
+```powershell
+gh workflow run publish-images.yml --repo saulpatinojr/HCW-MigrateOrchestrator_AddOn --ref main
+gh run list --repo saulpatinojr/HCW-MigrateOrchestrator_AddOn --workflow publish-images.yml --limit 1
+```
+
+Success looks like: the run is green, its log has the line `is not a v* tag: built and scanned, not pushed`, and the
+login, push, attest and digest steps show as skipped. Then tag that same commit (the version in `package.json`, with a
+`v` in front; the current release is `v0.3.2`); the run summary of the tag's `publish-images` run prints
 `docker.io/hybridcloudworks/img-mo-lab-addon@sha256:…`. Put that digest and the tag in the website's `group_vars/all.yml`
 and apply the host from the website repository as its README describes (PowerShell):
 
