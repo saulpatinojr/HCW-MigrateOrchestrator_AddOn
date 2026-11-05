@@ -1,6 +1,6 @@
 {
   "name": "hcw-azmigrateorchestrator-addon",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "archive": "hcw-azmigrateorchestrator-addon.zip",
   "archiveLayout": "repository files at archive root (no nested parent directory)",
   "requiredFiles": [
