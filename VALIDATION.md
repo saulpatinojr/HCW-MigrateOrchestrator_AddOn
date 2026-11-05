@@ -156,7 +156,8 @@ the pull request rather than under a new ADR number.
   The App key lives only as the repository secret `HCW_MAIN_ADMIN_PRIVATE_KEY` and is never printed. To rotate it,
   generate a new private key on the settings page of the App (https://github.com/settings/apps), replace the secret in every repository that holds the key (this one:
   https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/settings/secrets/actions; the App is installed on the four
-  add-on repositories, so check the other three), then delete the old key on the settings page of the App.
+  add-on repositories, so check the other three; HCW-CloudCrawler_App and HCW-CloudAssessor_App, where it is also
+  installed since 2026-11-04, hold a separate key as Dependabot secrets and are rotated on their own), then delete the old key on the settings page of the App.
   The settings page can hold several keys, so a separate key per repository lets you revoke one without
   touching the others.
 - Auto-merge of a bump (any bump since pull request 58; it then waits for the required checks) needs the repository

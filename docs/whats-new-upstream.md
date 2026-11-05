@@ -30,6 +30,15 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
 
 ## Entries (newest first)
 
+### 2026-11-05: the HCW Main Admin App is also used by two App repositories (credential notes only)
+
+- On 2026-11-04 the lockfile workflow in two other App repositories, `HCW-CloudCrawler_App` and `HCW-CloudAssessor_App` (not this edition's
+  upstream) started pushing Dependabot's regenerated
+  lockfile exports with the HCW Main Admin GitHub App, the App this repository's `core-update.yml` uses ([HCW-CloudCrawler_App#71](https://github.com/saulpatinojr/HCW-CloudCrawler_App/pull/71), [HCW-CloudAssessor_App#87](https://github.com/saulpatinojr/HCW-CloudAssessor_App/pull/87); owner decision on [HCW-CloudCrawler_App#70](https://github.com/saulpatinojr/HCW-CloudCrawler_App/issues/70)). Once the owner installs it there, the App is on six repositories, not four.
+- **Reaches this edition? Only the notes.** No engine, pin, workflow behaviour or test changes here. Those two
+  repositories hold a separate private key as Dependabot secrets, so rotating this repository's key is unchanged. The
+  `core-update.yml` comment and `VALIDATION.md` now say where the App is installed.
+
 ### 2026-10-27: upstream release `v0.4.1` (the appliance is fixed; the tarballs' contents do not change)
 
 - Upstream release [`v0.4.1`](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/releases/tag/v0.4.1) fixes the **appliance** API, which in `v0.4.0` cannot start against an Azure database (the database library discarded the sign-in token provider), and the appliance's Terraform. Pull requests [98](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/98) (Terraform names and the zone setting) and [99](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/99) (the API's database connection). Pull request [100](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/100) raises the version and adds one more API fix (a repeated option in `DATABASE_URL` is refused). Also in this range, none of it reaching this edition: [95](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/95) (the image-publish workflow), [96](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/96) (a rules report) and [97](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/97) (a Terraform database-subnet setting).
