@@ -120,7 +120,9 @@ the pull request rather than under a new ADR number.
 - **`publish-images.yml` dry run (2026-11-05):** a manual run builds, checks the edition boundary inside the image and
   scans, and never logs in, pushes or attests; `scripts/check-release-version.mjs` runs before the build in `--rehearse`
   mode (on a tag, `--tag`). `npm test` covers the guard (`tests/check-release-version.test.mjs`) and the workflow's shape
-  (`tests/security/publish-images-dry-run.test.mjs`, which also runs the gate script with bash); `actionlint` passes. The
+  (`tests/security/publish-images-dry-run.test.mjs`, which also runs the gate script with bash), all passing locally except
+  the one known Windows-only case in `tests/security/core-update-apply.test.mjs` (it spawns bash, which resolves to WSL here);
+  `actionlint` was not run locally (not installed) and is covered by the `Workflow Lint` job. The
   boundary check inside the image and the skipped push steps are proven only by a run on GitHub (the first dry run on
   `main` after the merge).
 - **Adopted with upstream v0.3.0** (2026-10-11): `partners={false}` replaces the CSS rule that hid the partner panel and
