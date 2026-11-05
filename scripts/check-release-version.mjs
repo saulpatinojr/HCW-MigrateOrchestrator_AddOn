@@ -41,9 +41,12 @@ export const SOURCES = ["package.json", "apps/lab-api/package.json", "apps/lab-w
 export const LOCK_LABEL = "package-lock.json (root entry)";
 export const UNRELEASED = "Unreleased";
 // `## 0.3.3 — 2026-11-05: title`, `## [0.3.3] - 2026-11-05`, `## 0.3.1: title` (no date; refused for a release).
-// The heading `## Unreleased — 0.3.0 (2026-10-10): …` of an older entry matches neither pattern and only ends a section.
+// Any `## Unreleased …` heading that names neither a version nor a date is the Unreleased section (`## Unreleased: next
+// up` too), so notes under it are never missed. The headings `## Unreleased — 0.3.0 (2026-10-10): …` and
+// `## Unreleased — 2026-10-04 (…)` of older entries name one or the other: they are released sections in the
+// repository's earlier convention, match neither pattern, and only end a section.
 const HEADING = /^##[ \t]+\[?(\d+\.\d+\.\d+)\]?(?:[ \t]+[-—–][ \t]+([^\s:]+))?(?::.*)?[ \t]*$/;
-const UNRELEASED_HEADING = /^##[ \t]+\[?unreleased\]?[ \t]*$/i;
+const UNRELEASED_HEADING = /^##[ \t]+\[?unreleased\]?(?![^\n]*(?:\d+\.\d+\.\d+|\d{4}-\d{2}-\d{2}))/i;
 // The one line an empty Unreleased section may hold, so the heading is never left dangling.
 const PLACEHOLDER = /^[-*_ \t]*nothing yet\.?[_ \t]*$/i;
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;

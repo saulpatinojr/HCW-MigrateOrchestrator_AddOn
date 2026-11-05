@@ -8,8 +8,9 @@
 # reuses an older upgrade result; the second build below still reuses the first's layers, since the value is the same.
 #
 # A manual run (workflow_dispatch) is a dry run: it runs the guard, builds, checks the boundary and scans, and never logs in,
-# pushes or attests, because the Docker OIDC connection only trusts tags, and because a tag that publishes an image cannot
-# be taken back, so the dry run must be green on the exact commit before that commit is tagged. Before anything is built,
+# pushes or attests, even when started on an existing tag ref (the gate and every publishing step require the push event
+# AND a refs/tags/v* ref), because the Docker OIDC connection only trusts tags, and because a tag that publishes an image
+# cannot be taken back, so the dry run must be green on the exact commit before that commit is tagged. Before anything is built,
 # scripts/check-release-version.mjs checks that package.json, both workspaces, repository.manifest.json and package-lock.json
 # carry one plain version, that CHANGELOG.md has a dated, non-empty section for it and nothing under Unreleased, and that the
 # commit is on main. On a tag it also checks that the tag is v + that version. The dry run runs the SAME checks with
@@ -55,7 +56,8 @@ jobs:
         env: { ENABLED: "${{ vars.DOCKERHUB_ENABLED }}", CONNECTION: "${{ vars.DOCKERHUB_CONNECTION }}" }
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then echo "push=false" >> "$GITHUB_OUTPUT"; echo "::notice::${GITHUB_REF} is not a v* tag: built and scanned, not pushed (the Docker connection only trusts tags)"; exit 0; fi
+          # The event is checked too: a manual run started on an existing tag ref has GITHUB_REF=refs/tags/v…, and must not re-push it.
+          if [ "${GITHUB_EVENT_NAME}" != "push" ] || [[ "${GITHUB_REF}" != refs/tags/v* ]]; then echo "push=false" >> "$GITHUB_OUTPUT"; echo "::notice::${GITHUB_EVENT_NAME} on ${GITHUB_REF} is not a v* tag: built and scanned, not pushed (only a pushed v* tag publishes; the Docker connection only trusts tags)"; exit 0; fi
           if [ "$ENABLED" != "true" ]; then echo "push=false" >> "$GITHUB_OUTPUT"; echo "::notice::DOCKERHUB_ENABLED is not 'true': built and scanned, not pushed (docs/deployment/lab-host.md, step 2)"; exit 0; fi
           uuid='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
           if [[ ! "$CONNECTION" =~ $uuid ]]; then
@@ -92,7 +94,9 @@ jobs:
           set -euo pipefail
           if docker run --rm "${IMAGE}:scan" sh -c 'test -e node_modules/@azure'; then echo "::error::an @azure package is installed in the lab image"; exit 1; fi
           if docker run --rm "${IMAGE}:scan" node --input-type=commonjs -e "require.resolve('@azure/identity')"; then echo "::error::@azure/identity resolves in the lab image"; exit 1; fi
-          if docker run --rm "${IMAGE}:scan" grep -rq "management.azure.com" node_modules/@hybridcloudworks; then echo "::error::the installed core references an Azure endpoint"; exit 1; fi
+          # grep: 0 found, 1 not found, 2 error (for example the path is missing); only "not found" is a pass.
+          rc=0; docker run --rm "${IMAGE}:scan" grep -rqF "management.azure.com" node_modules/@hybridcloudworks || rc=$?
+          test "$rc" = 1 || { echo "::error::the installed core references an Azure endpoint, or could not be searched (grep exit $rc)"; exit 1; }
           if docker run --rm "${IMAGE}:scan" sh -c 'command -v npm'; then echo "::error::npm is present in the runtime image"; exit 1; fi
           test "$(docker run --rm "${IMAGE}:scan" id -un)" = "node" || { echo "::error::the image does not run as the node user"; exit 1; }
           test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.licenses" }}' "${IMAGE}:scan")" = "MIT" || { echo "::error::the image does not state its open-source licence (org.opencontainers.image.licenses=MIT)"; exit 1; }
@@ -107,10 +111,10 @@ jobs:
       - name: Scan before publishing (HIGH/CRITICAL, fixed only)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with: { image-ref: "${{ env.IMAGE }}:scan", exit-code: "1", severity: "HIGH,CRITICAL", ignore-unfixed: true }
-      # From here on, tag runs only (the gate's output, and the ref itself as a second lock the gate script cannot loosen).
+      # From here on, pushed v* tags only (the gate's output, and the event and ref themselves as a second lock the gate script cannot loosen).
       # After the scan, so the short-lived token's life is spent on the push and the attestation alone.
       # DOCKERHUB_OIDC_CONNECTIONID is the name the action reads; DOCKERHUB_CONNECTION is ours. EXPIREIN accepts 300-3600.
-      - if: steps.gate.outputs.push == 'true' && startsWith(github.ref, 'refs/tags/v')
+      - if: steps.gate.outputs.push == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         name: Log in to Docker Hub through the OIDC connection
         uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         env:
@@ -119,7 +123,7 @@ jobs:
         with:
           registry: docker.io
           username: ${{ env.DOCKERHUB_ORG }}
-      - if: steps.gate.outputs.push == 'true' && startsWith(github.ref, 'refs/tags/v')
+      - if: steps.gate.outputs.push == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: build
         name: Push with provenance and SBOM
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -134,14 +138,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           provenance: true
           sbom: true
-      - if: steps.gate.outputs.push == 'true' && startsWith(github.ref, 'refs/tags/v')
+      - if: steps.gate.outputs.push == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         name: Attest build provenance (SLSA)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
-      - if: steps.gate.outputs.push == 'true' && startsWith(github.ref, 'refs/tags/v')
+      - if: steps.gate.outputs.push == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         name: Record the immutable digest for the website to pin
         env:
           DIGEST: ${{ steps.build.outputs.digest }}

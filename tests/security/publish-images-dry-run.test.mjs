@@ -26,7 +26,8 @@ const script = (step) =>
     .map((line) => line.slice(10))
     .join("\n");
 const index = (predicate) => steps.findIndex(predicate);
-const PUBLISH_IF = "steps.gate.outputs.push == 'true' && startsWith(github.ref, 'refs/tags/v')";
+// Three locks: the gate's verdict, the push event (a manual run started on an existing tag ref must not re-push it) and the ref.
+const PUBLISH_IF = "steps.gate.outputs.push == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')";
 
 const guard = index((s) => s.includes("scripts/check-release-version.mjs"));
 const gate = index((s) => /^id:\s*gate\s*$/m.test(s));
@@ -93,11 +94,11 @@ test("every step that can reach Docker Hub is conditioned on the gate and on a v
 });
 
 // The gate script, run with bash as the workflow runs it. GITHUB_OUTPUT is a file, as under Actions.
-function runGate({ ref, enabled, connection }) {
+function runGate({ ref, event = "push", enabled, connection }) {
   const dir = mkdtempSync(join(tmpdir(), "publish-gate-"));
   const output = join(dir, "output");
   writeFileSync(output, "");
-  const env = { PATH: process.env.PATH, GITHUB_REF: ref, GITHUB_OUTPUT: output };
+  const env = { PATH: process.env.PATH, GITHUB_REF: ref, GITHUB_EVENT_NAME: event, GITHUB_OUTPUT: output };
   if (enabled !== undefined) env.ENABLED = enabled;
   else env.ENABLED = "";
   env.CONNECTION = connection ?? "";
@@ -107,12 +108,21 @@ function runGate({ ref, enabled, connection }) {
   return { ...r, output: out };
 }
 
-test("the gate refuses to push on anything that is not a v* tag and says so with a notice", () => {
-  for (const ref of ["refs/heads/main", "refs/heads/ci/publish-dry-run", "refs/tags/release-1", "refs/pull/64/merge"]) {
-    const r = runGate({ ref, enabled: "true", connection: "12345678-1234-1234-1234-123456789abc" });
+test("the gate refuses to push on anything that is not a pushed v* tag and says so with a notice", () => {
+  const cases = [
+    ["refs/heads/main", "workflow_dispatch"],
+    ["refs/heads/ci/publish-dry-run", "workflow_dispatch"],
+    ["refs/tags/release-1", "push"],
+    ["refs/pull/64/merge", "pull_request"],
+    // a manual run started on an existing tag ref: the ref looks like a release, the event says it is not one
+    ["refs/tags/v0.3.3", "workflow_dispatch"],
+    ["refs/tags/v0.3.2", "workflow_dispatch"],
+  ];
+  for (const [ref, event] of cases) {
+    const r = runGate({ ref, event, enabled: "true", connection: "12345678-1234-1234-1234-123456789abc" });
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.equal(r.output, "push=false\n");
-    assert.match(r.stdout, new RegExp(`^::notice::${ref.replace(/[/.]/g, "\\$&")} is not a v\\* tag: built and scanned, not pushed`, "m"));
+    assert.equal(r.output, "push=false\n", `${event} on ${ref}`);
+    assert.match(r.stdout, new RegExp(`^::notice::${event} on ${ref.replace(/[/.]/g, "\\$&")} is not a v\\* tag: built and scanned, not pushed`, "m"));
   }
 });
 

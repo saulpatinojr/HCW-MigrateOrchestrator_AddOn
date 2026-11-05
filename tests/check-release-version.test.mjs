@@ -100,6 +100,7 @@ const CASES = [
   ["an empty section", "## Unreleased\n\n## 0.3.3 — 2026-11-05: x\n\n### Fixed\n\n<!-- later -->\n\n## 0.3.2 — 2026-10-25: y\n\n- Older.\n", /section for 0\.3\.3 is empty/],
   ["entries still under Unreleased", "## Unreleased\n\n- Not folded in yet.\n\n## 0.3.3 — 2026-11-05: x\n\n- Something.\n", /still has entries under Unreleased/],
   ["entries under [Unreleased] with brackets", "## [Unreleased]\n\n- Not folded in yet.\n\n## [0.3.3] - 2026-11-05\n\n- Something.\n", /still has entries under Unreleased/],
+  ["entries under an Unreleased heading with a title but no version", "## Unreleased: next up\n\n- Not folded in yet.\n\n## 0.3.3 — 2026-11-05: x\n\n- Something.\n", /still has entries under Unreleased/],
   ["the version heading twice", "## Unreleased\n\n## 0.3.3 — 2026-11-05: x\n\n- A.\n\n## 0.3.3 — 2026-11-05: again\n\n- B.\n", /more than once/],
 ];
 for (const [what, changelog, expected] of CASES) {
@@ -157,6 +158,10 @@ test("the changelog parser skips headings inside code fences and HTML comments, 
     "## Unreleased — 0.3.0 (2026-10-10): an older entry in the repository's own history",
     "",
     "- Not a release section.",
+    "",
+    "## Unreleased — 2026-10-04 (ADR-0028 flip)",
+    "",
+    "- Not a release section either: a date, no version, so not the Unreleased section.",
     "",
     "## 0.3.1: before",
     "",
