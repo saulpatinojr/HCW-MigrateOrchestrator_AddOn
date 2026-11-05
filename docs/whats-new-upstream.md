@@ -33,7 +33,7 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
 ### 2026-11-05: the HCW Main Admin App is also used by two App repositories (credential notes only)
 
 - On 2026-11-04 the lockfile workflow in two other App repositories, `HCW-CloudCrawler_App` and `HCW-CloudAssessor_App` (not this edition's
-  upstream) started pushing Dependabot's regenerated
+  upstream) were changed to push Dependabot's regenerated
   lockfile exports with the HCW Main Admin GitHub App, the App this repository's `core-update.yml` uses ([HCW-CloudCrawler_App#71](https://github.com/saulpatinojr/HCW-CloudCrawler_App/pull/71), [HCW-CloudAssessor_App#87](https://github.com/saulpatinojr/HCW-CloudAssessor_App/pull/87); owner decision on [HCW-CloudCrawler_App#70](https://github.com/saulpatinojr/HCW-CloudCrawler_App/issues/70)). Once the owner installs it there, the App is on six repositories, not four.
 - **Reaches this edition? Only the notes.** No engine, pin, workflow behaviour or test changes here. Those two
   repositories hold a separate private key as Dependabot secrets, so rotating this repository's key is unchanged. The
