@@ -122,7 +122,13 @@ test("the gate refuses to push on anything that is not a pushed v* tag and says 
     const r = runGate({ ref, event, enabled: "true", connection: "12345678-1234-1234-1234-123456789abc" });
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.equal(r.output, "push=false\n", `${event} on ${ref}`);
-    assert.match(r.stdout, new RegExp(`^::notice::${event} on ${ref.replace(/[/.]/g, "\\$&")} is not a v\\* tag: built and scanned, not pushed`, "m"));
+    // A plain substring check: building a regular expression from the ref would need every metacharacter escaped
+    // (CodeQL flagged the partial escape), and nothing here needs a pattern.
+    const notice = `::notice::${event} on ${ref} is not a v* tag: built and scanned, not pushed`;
+    assert.ok(
+      r.stdout.split("\n").some((line) => line.startsWith(notice)),
+      `expected a line starting "${notice}" in:\n${r.stdout}`,
+    );
   }
 });
 
