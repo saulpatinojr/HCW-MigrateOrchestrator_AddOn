@@ -5,10 +5,13 @@
 # `npm ci` fetches and verifies them like registry packages (ADR-0030; no sibling checkout).
 # docker build -f infrastructure/docker/Dockerfile.lab .
 #
-# Base image pinned by digest (the multi-arch index of node:26-bookworm-slim, resolved from Docker Hub on 2026-10-10).
-# [VERIFY] before the first production publish: `docker buildx imagetools inspect node:26-bookworm-slim` must print this digest;
-# a later tag move is adopted deliberately by changing both lines (Dependabot's docker ecosystem proposes it).
-ARG NODE_IMAGE=node:26-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567
+# Base image pinned by digest (the multi-arch index of node:26-trixie-slim, resolved from Docker Hub on 2026-11-05:
+# Node 26.13.0 on Debian 13.7 with apt 3.0.4). Moved from node:26-bookworm-slim (Debian 12, apt 2.6.1) for
+# CVE-2026-109518 (website issue saulpatinojr/HCW-HybridCloudWorks#1562): Debian 13 is the current stable release, and
+# the other add-on images already build on it. `docker buildx imagetools inspect node:26-trixie-slim` prints this
+# digest; a later tag move is adopted deliberately by changing both parts of the line together (Dependabot's docker
+# ecosystem proposes it). tests/contract/lab-image.test.mjs pins the shape of this file.
+ARG NODE_IMAGE=node:26-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072
 FROM ${NODE_IMAGE} AS build
 WORKDIR /srv/addon
 COPY package.json package-lock.json tsconfig.base.json tsconfig.build.json ./
@@ -25,8 +28,21 @@ LABEL org.opencontainers.image.title="img-mo-lab-addon" \
       org.opencontainers.image.licenses="MIT"
 ENV NODE_ENV=production PORT=8080 AMO_STATIC_DIR=/srv/addon/apps/lab-web/dist
 WORKDIR /srv/addon
-# Pull the latest Debian security fixes for the base image (Trivy gates publication on fixed HIGH/CRITICAL CVEs).
-RUN apt-get update && apt-get -y --no-install-recommends upgrade && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Debian's security updates on top of the digest-pinned base (Trivy in publish-images.yml, and the website's Docker Scout
+# check, refuse fixable HIGH/CRITICAL findings). A security upload reaches the mirrors days before the official Node image
+# is rebuilt with it, so a digest bump alone cannot always clear a finding; this step closes that window.
+# `Acquire::Retries=0`: the apt doing this upgrade is still the base's, and CVE-2026-109518 needs a download retry to slip
+# an unverified package in, so retries stay off until the upgraded apt is in place (a mirror hiccup fails the build instead).
+# `--error-on=any`: the update fails if any index (the security one above all) cannot be fetched, instead of succeeding
+# with a warning and leaving the base unupgraded. PUBLISH_CACHE_BUST is a per-run value publish-images.yml passes (its run
+# id and attempt); naming it in the command gives this layer a different cache key on every publish run, so a rebuild can
+# never reuse an older upgrade result after a newer security upload. Unset on a local build, where the layer caches as usual.
+ARG PUBLISH_CACHE_BUST=
+RUN printf 'upgrade run: %s\n' "${PUBLISH_CACHE_BUST}" \
+    && apt-get -o Acquire::Retries=0 update --error-on=any \
+    && apt-get -o Acquire::Retries=0 upgrade -y --no-install-recommends \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 # The upstream tarballs were installed into node_modules like registry packages; the rule corpus ships inside migration-core.
 COPY --from=build /srv/addon/node_modules ./node_modules
 COPY --from=build /srv/addon/apps/lab-api/dist ./apps/lab-api/dist

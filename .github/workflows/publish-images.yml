@@ -3,6 +3,8 @@
 # Build context is this repository alone: the upstream packages are release tarballs npm ci fetches by URL and verifies by hash.
 # Order matters: build locally -> scan -> push. A failing scan publishes nothing. The website pins the digest this run prints
 # in lab-host/ansible/group_vars/all.yml (addons[].image_digest); tags are for humans.
+# PUBLISH_CACHE_BUST (this run's id and attempt) reaches the Dockerfile's security-upgrade layer, so a publish run never
+# reuses an older upgrade result; the second build below still reuses the first's layers, since the value is the same.
 #
 # Login is the Docker OIDC connection, never a long-lived token: docker/login-action v4.5.0+ with no password, registry
 # docker.io and DOCKERHUB_OIDC_CONNECTIONID set exchanges a GitHub ID token at identity.docker.com for a short-lived Docker
@@ -55,7 +57,9 @@ jobs:
         with:
           context: .
           file: infrastructure/docker/Dockerfile.lab
-          build-args: ADDON_VERSION=${{ steps.version.outputs.version }}
+          build-args: |
+            ADDON_VERSION=${{ steps.version.outputs.version }}
+            PUBLISH_CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
           load: true
           push: false
           tags: ${{ env.IMAGE }}:scan
@@ -78,7 +82,9 @@ jobs:
         with:
           context: .
           file: infrastructure/docker/Dockerfile.lab
-          build-args: ADDON_VERSION=${{ steps.version.outputs.version }}
+          build-args: |
+            ADDON_VERSION=${{ steps.version.outputs.version }}
+            PUBLISH_CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
