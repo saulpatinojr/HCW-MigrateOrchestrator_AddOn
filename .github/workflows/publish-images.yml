@@ -1,15 +1,26 @@
 # Actions are pinned to full commit SHAs (version in the trailing comment); Dependabot (github-actions ecosystem) proposes updates.
 # AddOn image docker.io/hybridcloudworks/img-mo-lab-addon (program decision 2026-10-09: Docker Hub only, no GHCR).
 # Build context is this repository alone: the upstream packages are release tarballs npm ci fetches by URL and verifies by hash.
-# Order matters: build locally -> scan -> push. A failing scan publishes nothing. The website pins the digest this run prints
-# in lab-host/ansible/group_vars/all.yml (addons[].image_digest); tags are for humans.
+# Order matters: release guard -> build locally -> edition boundary inside the image -> scan -> push. A failing guard, boundary
+# check or scan publishes nothing. The website pins the digest this run prints in lab-host/ansible/group_vars/all.yml
+# (addons[].image_digest); tags are for humans.
 # PUBLISH_CACHE_BUST (this run's id and attempt) reaches the Dockerfile's security-upgrade layer, so a publish run never
 # reuses an older upgrade result; the second build below still reuses the first's layers, since the value is the same.
+#
+# A manual run (workflow_dispatch) is a dry run: it runs the guard, builds, checks the boundary and scans, and never logs in,
+# pushes or attests, even when started on an existing tag ref (the gate and every publishing step require the push event
+# AND a refs/tags/v* ref), because the Docker OIDC connection only trusts tags, and because a tag that publishes an image
+# cannot be taken back, so the dry run must be green on the exact commit before that commit is tagged. Before anything is built,
+# scripts/check-release-version.mjs checks that package.json, both workspaces, repository.manifest.json and package-lock.json
+# carry one plain version, that CHANGELOG.md has a dated, non-empty section for it and nothing under Unreleased, and that the
+# commit is on main. On a tag it also checks that the tag is v + that version. The dry run runs the SAME checks with
+# --rehearse (the tag is taken to be v + the package version, which must not exist yet), so a green dry run on the commit
+# you tag means the tag will pass them too.
 #
 # Login is the Docker OIDC connection, never a long-lived token: docker/login-action v4.5.0+ with no password, registry
 # docker.io and DOCKERHUB_OIDC_CONNECTIONID set exchanges a GitHub ID token at identity.docker.com for a short-lived Docker
 # access token. The repository variables DOCKERHUB_ENABLED and DOCKERHUB_CONNECTION are owner steps (docs/deployment/lab-host.md);
-# until they are set the job is skipped and the website catalogue row stays `coming`.
+# until they are set a tag run builds, checks and scans but pushes nothing, and the website catalogue row stays `coming`.
 name: publish-images
 on:
   push:
@@ -22,25 +33,38 @@ env:
   DOCKERHUB_ORG: hybridcloudworks
 jobs:
   build-scan-publish:
-    if: vars.DOCKERHUB_ENABLED == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write # the Docker token exchange, and Sigstore's signing certificate
       attestations: write
     steps:
-      # Before the builds, so a missing connection ID fails in seconds rather than after them.
-      - name: DOCKERHUB_CONNECTION holds a connection ID
-        env:
-          CONNECTION_ID: ${{ vars.DOCKERHUB_CONNECTION }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0, persist-credentials: false } # every tag and origin/main, for the release guard
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version: 26, package-manager-cache: false } # no cache can reach the signing job
+      # Before anything is built: the guard is node: built-ins only, so no npm ci is needed here.
+      - name: The tag, the versions and the changelog agree (a dry run runs the same checks as the tag)
+        env: { REF_TYPE: "${{ github.ref_type }}", REF_NAME: "${{ github.ref_name }}" }
         run: |
           set -euo pipefail
+          if [ "$REF_TYPE" = "tag" ]; then mode=(--tag "$REF_NAME"); else mode=(--rehearse); fi
+          node scripts/check-release-version.mjs "${mode[@]}" --ancestor-of origin/main
+      # Before the builds, so a missing connection ID fails in seconds rather than after them. Only a v* tag can push.
+      - id: gate
+        name: Publish only on a v* tag with the Docker OIDC connection configured (DOCKERHUB_ENABLED, DOCKERHUB_CONNECTION)
+        env: { ENABLED: "${{ vars.DOCKERHUB_ENABLED }}", CONNECTION: "${{ vars.DOCKERHUB_CONNECTION }}" }
+        run: |
+          set -euo pipefail
+          # The event is checked too: a manual run started on an existing tag ref has GITHUB_REF=refs/tags/v…, and must not re-push it.
+          if [ "${GITHUB_EVENT_NAME}" != "push" ] || [[ "${GITHUB_REF}" != refs/tags/v* ]]; then echo "push=false" >> "$GITHUB_OUTPUT"; echo "::notice::${GITHUB_EVENT_NAME} on ${GITHUB_REF} is not a v* tag: built and scanned, not pushed (only a pushed v* tag publishes; the Docker connection only trusts tags)"; exit 0; fi
+          if [ "$ENABLED" != "true" ]; then echo "push=false" >> "$GITHUB_OUTPUT"; echo "::notice::DOCKERHUB_ENABLED is not 'true': built and scanned, not pushed (docs/deployment/lab-host.md, step 2)"; exit 0; fi
           uuid='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
-          if [[ ! "$CONNECTION_ID" =~ $uuid ]]; then
+          if [[ ! "$CONNECTION" =~ $uuid ]]; then
             echo "::error::DOCKERHUB_ENABLED is true, but the repository variable DOCKERHUB_CONNECTION is not an OIDC connection ID (a UUID, copied from the connection in Docker Home). See docs/deployment/lab-host.md."
             exit 1
           fi
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          echo "push=true" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - id: version
         name: Image version from the AddOn package
@@ -52,7 +76,7 @@ jobs:
           tags: |
             type=semver,pattern=v{{version}}
             type=sha
-      - name: Build (local only, for scanning)
+      - name: Build (local only, for the boundary check and the scan)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -63,12 +87,35 @@ jobs:
           load: true
           push: false
           tags: ${{ env.IMAGE }}:scan
+      # The same boundary tests/security/edition-boundary.test.mjs checks in the source, checked in the image that ships:
+      # no Azure SDK, no Azure endpoint in the core, no npm, non-root, the licence label, and health under the lab host's hardening.
+      - name: Edition boundary inside the image (no Azure SDK or endpoint; no npm; non-root; licence label; health answers)
+        run: |
+          set -euo pipefail
+          if docker run --rm "${IMAGE}:scan" sh -c 'test -e node_modules/@azure'; then echo "::error::an @azure package is installed in the lab image"; exit 1; fi
+          if docker run --rm "${IMAGE}:scan" node --input-type=commonjs -e "require.resolve('@azure/identity')"; then echo "::error::@azure/identity resolves in the lab image"; exit 1; fi
+          # grep: 0 found, 1 not found, 2 error (for example the path is missing); only "not found" is a pass.
+          rc=0; docker run --rm "${IMAGE}:scan" grep -rqF "management.azure.com" node_modules/@hybridcloudworks || rc=$?
+          test "$rc" = 1 || { echo "::error::the installed core references an Azure endpoint, or could not be searched (grep exit $rc)"; exit 1; }
+          if docker run --rm "${IMAGE}:scan" sh -c 'command -v npm'; then echo "::error::npm is present in the runtime image"; exit 1; fi
+          test "$(docker run --rm "${IMAGE}:scan" id -un)" = "node" || { echo "::error::the image does not run as the node user"; exit 1; }
+          test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.licenses" }}' "${IMAGE}:scan")" = "MIT" || { echo "::error::the image does not state its open-source licence (org.opencontainers.image.licenses=MIT)"; exit 1; }
+          cid="$(docker run -d --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges --memory 512m --pids-limit 256 --cpus 1 -e AMO_ALLOW_NO_TURNSTILE=1 -e AMO_FRAME_ANCESTORS="'self'" "${IMAGE}:scan")"
+          ok=0
+          for _ in $(seq 1 30); do
+            if docker exec "$cid" node -e "fetch('http://127.0.0.1:8080/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then ok=1; break; fi
+            sleep 1
+          done
+          docker logs "$cid" 2>&1 | tail -n 20 || true; docker rm -f "$cid" >/dev/null
+          test "$ok" = 1 || { echo "::error::/api/health did not answer 200 under the lab host's hardening"; exit 1; }
       - name: Scan before publishing (HIGH/CRITICAL, fixed only)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with: { image-ref: "${{ env.IMAGE }}:scan", exit-code: "1", severity: "HIGH,CRITICAL", ignore-unfixed: true }
+      # From here on, pushed v* tags only (the gate's output, and the event and ref themselves as a second lock the gate script cannot loosen).
       # After the scan, so the short-lived token's life is spent on the push and the attestation alone.
       # DOCKERHUB_OIDC_CONNECTIONID is the name the action reads; DOCKERHUB_CONNECTION is ours. EXPIREIN accepts 300-3600.
-      - name: Log in to Docker Hub through the OIDC connection
+      - if: steps.gate.outputs.push == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        name: Log in to Docker Hub through the OIDC connection
         uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         env:
           DOCKERHUB_OIDC_CONNECTIONID: ${{ vars.DOCKERHUB_CONNECTION }}
@@ -76,7 +123,8 @@ jobs:
         with:
           registry: docker.io
           username: ${{ env.DOCKERHUB_ORG }}
-      - id: build
+      - if: steps.gate.outputs.push == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        id: build
         name: Push with provenance and SBOM
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -90,20 +138,25 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           provenance: true
           sbom: true
-      - name: Attest build provenance (SLSA)
+      - if: steps.gate.outputs.push == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        name: Attest build provenance (SLSA)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
-      - name: Record the immutable digest for the website to pin
+      - if: steps.gate.outputs.push == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        name: Record the immutable digest for the website to pin
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           {
             echo "### Published"
             echo
             echo '```'
-            echo "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
+            echo "${IMAGE}@${DIGEST}"
             echo '```'
             echo
-            echo "Pin it in the website repository: lab-host/ansible/group_vars/all.yml, addons[].image_digest for id migration (image_tag v${{ steps.version.outputs.version }})."
+            echo "Pin it in the website repository: lab-host/ansible/group_vars/all.yml, addons[].image_digest for id migration (image_tag v${VERSION})."
           } >> "$GITHUB_STEP_SUMMARY"
