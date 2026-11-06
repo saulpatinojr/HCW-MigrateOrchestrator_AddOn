@@ -5,6 +5,7 @@ The engine, rules, CLI and UI components are versioned and released upstream in 
 
 ## Unreleased
 
+- **CI lints the workflows and the Dockerfile on every pull request** ([HCW-HybridCloudWorks#1575](https://github.com/saulpatinojr/HCW-HybridCloudWorks/issues/1575)). The required `build-test` job now ends with actionlint 1.7.12, zizmor 1.31.1 (offline) and hadolint 2.14.0 (failing at warning), the same pinned releases and SHA-256 digests as the website's CI; CodeRabbit ran these until it was removed on 2026-11-06. `.github/actionlint.yaml` declares the `ubuntu-26.04` runner label, which actionlint 1.7.12 predates.
 Nothing yet.
 
 ## 0.3.3 — 2026-11-05: the lab image builds on Debian 13, and core-update runs upstream code away from the App key
