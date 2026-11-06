@@ -18,6 +18,8 @@ jobs:
     environment: lab
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: coder/setup-action@4a607a8113d4e676e2d7c34caa20a814bc88bfda # v1
       - name: Push template
         env:
