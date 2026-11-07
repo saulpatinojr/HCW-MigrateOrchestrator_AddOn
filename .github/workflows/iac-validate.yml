@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   terraform:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         # The standalone lab Terraform (lab-hostinger, lab-cloudflare) was retired on 2026-10-10 and deleted: the lab host is the

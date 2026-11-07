@@ -33,7 +33,7 @@ env:
   DOCKERHUB_ORG: hybridcloudworks
 jobs:
   build-scan-publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       id-token: write # the Docker token exchange, and Sigstore's signing certificate

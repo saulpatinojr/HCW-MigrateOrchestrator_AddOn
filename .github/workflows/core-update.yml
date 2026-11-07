@@ -87,7 +87,7 @@ jobs:
   # Job 1 of 2. Installs and runs the new release's code, so it gets no secret at all: GITHUB_TOKEN is read-only and
   # reaches only the refs step, which runs no project code. What it produces leaves as an artifact.
   bump:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     outputs:
@@ -188,7 +188,7 @@ jobs:
   pull-request:
     needs: bump
     if: github.ref == 'refs/heads/main' && (needs.bump.outputs.changed == 'true' || inputs.probe)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
