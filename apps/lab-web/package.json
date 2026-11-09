@@ -1,6 +1,6 @@
 {
   "name": "@amo/lab-web",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": true,
   "type": "module",
   "description": "The pane app the hybridcloudworks.com site frames at /tools/migration: mounts @hybridcloudworks/migration-ui against the same-origin lab API, owns the human-verification widget and speaks the hcw-addon pane protocol. Built into dist/ and served by @amo/lab-api.",

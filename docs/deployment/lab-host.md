@@ -90,7 +90,7 @@ gh run list --repo saulpatinojr/HCW-MigrateOrchestrator_AddOn --workflow publish
 
 Success looks like: the run is green, its log has the line `is not a v* tag: built and scanned, not pushed`, and the
 login, push, attest and digest steps show as skipped. Then tag that same commit (the version in `package.json`, with a
-`v` in front; the current release is `v0.3.2`); the run summary of the tag's `publish-images` run prints
+`v` in front; the release being prepared is `v0.3.4`); the run summary of the tag's `publish-images` run prints
 `docker.io/hybridcloudworks/img-mo-lab-addon@sha256:…`. Put that digest and the tag in the website's `group_vars/all.yml`
 and apply the host from the website repository as its README describes (PowerShell):
 

@@ -3,6 +3,32 @@
 Web-front edition (`saulpatinojr/HCW-MigrateOrchestrator_AddOn`, ADR-0028). Everything below distinguishes what was executed
 from what was not. Engine, rule and UI validation lives upstream in `saulpatinojr/HCW-MigrateOrchestrator_App/VALIDATION.md`.
 
+## Release 0.3.4 prepared: rebuild for Debian's zlib fix (2026-11-09)
+
+What changed: the version only (0.3.3 to 0.3.4 in the root and both workspace `package.json` files, `package-lock.json`
+and `repository.manifest.json`), the `CHANGELOG.md` section for 0.3.4, and the release named in
+`docs/deployment/lab-host.md`. This run publishes nothing. The release exists so a new `v0.3.4` tag rebuilds the lab
+image with Debian's fixed `zlib` for CVE-2026-76844 and CVE-2026-85091, which Docker Scout found in the published
+`v0.3.3` image (website issue saulpatinojr/HCW-HybridCloudWorks#1600).
+
+- **Environment:** Linux authoring sandbox, Node 26.13.0, npm 11.20.0 run from its registry tarball (the npm of the runs
+  below; the sandbox's own npm 10.9.9 rewrote the lock's `libc` fields, so it was not used).
+- **Executed:** `npm version 0.3.4 --no-git-tag-version --workspaces --include-workspace-root` (the lock diff is the four
+  project version lines and nothing else); `npm ci` — 0 vulnerabilities; `npm test` — **157 pass, 0 fail** (includes
+  `tests/version-alignment.test.mjs` and `tests/contract/lab-image.test.mjs`); `npm run typecheck`; `npm run build`;
+  `bash scripts/package-repository.sh` (190 files); `npx playwright test` — **5 pass** on Chromium headless shell 156;
+  `node scripts/check-release-version.mjs --tag v0.3.4` and `--rehearse` — both print
+  `release version consistent: 0.3.4, tag v0.3.4`.
+- **Checked, read-only:** the Debian security tracker lists both CVEs as fixed for trixie in
+  `zlib 1:1.3.dfsg+really1.3.1-1+deb13u1` (DSA-6613-1), and the `trixie-security` `Packages` index for amd64 and arm64
+  carries `zlib1g` at that version. `infrastructure/docker/Dockerfile.lab`'s final stage runs
+  `apt-get -o Acquire::Retries=0 update --error-on=any` and `apt-get -o Acquire::Retries=0 upgrade -y`, with
+  `ARG PUBLISH_CACHE_BUST=` printed in the same `RUN`, and `publish-images.yml` passes a per-run value to both builds, so a
+  publish run cannot reuse an older upgrade layer.
+- **Not executed:** a local image build and a look at `zlib1g` inside it (no Docker daemon in this sandbox); Docker Scout;
+  the `publish-images.yml` dry run on GitHub (after the merge, on the merge commit the tag will point at); actionlint,
+  zizmor and hadolint (no workflow or Dockerfile changed; the `build-test` job runs them).
+
 ## core-update runs from main only, and auto-merge ignores the bump job's report (2026-10-31)
 
 What changed: the first step of both jobs refuses a run whose `github.ref` is not `refs/heads/main`, the `pull-request`
