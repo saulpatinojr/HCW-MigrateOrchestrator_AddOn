@@ -8,7 +8,7 @@ hybridcloudworks.com lab host as one hardened container created by the website r
 | Field | Value |
 |---|---|
 | `id` | `migration` |
-| `image` / `image_tag` / `image_digest` | `docker.io/hybridcloudworks/img-mo-lab-addon` / `v0.3.0` / the digest `publish-images.yml` printed |
+| `image` / `image_tag` / `image_digest` | `docker.io/hybridcloudworks/img-mo-lab-addon` / the release tag, `v` plus the version in `package.json` (`v0.3.4` since 2026-11-09) / the digest `publish-images.yml` printed |
 | `port` | `18081` (published as `127.0.0.1:18081:8080`, loopback only) |
 | `memory` / `pids` | `512m` / `256` |
 | hardening (the role applies it) | read-only root, `tmpfs /tmp`, `cap_drop ALL`, `no-new-privileges`, one CPU, `restart unless-stopped`, the image's `HEALTHCHECK`, no volumes, no socket, default bridge |
@@ -90,7 +90,7 @@ gh run list --repo saulpatinojr/HCW-MigrateOrchestrator_AddOn --workflow publish
 
 Success looks like: the run is green, its log has the line `is not a v* tag: built and scanned, not pushed`, and the
 login, push, attest and digest steps show as skipped. Then tag that same commit (the version in `package.json`, with a
-`v` in front; the release being prepared is `v0.3.4`); the run summary of the tag's `publish-images` run prints
+`v` in front; the latest release is `v0.3.4`); the run summary of the tag's `publish-images` run prints
 `docker.io/hybridcloudworks/img-mo-lab-addon@sha256:…`. Put that digest and the tag in the website's `group_vars/all.yml`
 and apply the host from the website repository as its README describes (PowerShell):
 

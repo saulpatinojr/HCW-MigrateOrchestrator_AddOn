@@ -6,7 +6,7 @@
 [![security](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/actions/workflows/security.yml/badge.svg)](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/actions/workflows/security.yml)
 [![core-update](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/actions/workflows/core-update.yml/badge.svg)](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/actions/workflows/core-update.yml)
 [![live](https://img.shields.io/website?url=https%3A%2F%2Fmigration.lab.hybridcloudworks.com%2Fapi%2Fhealth&label=live%20at%20%2Ftools%2Fmigration&up_message=yes&down_message=down)](https://hybridcloudworks.com/tools/migration)
-[![upstream](https://img.shields.io/badge/upstream-HCW--MigrateOrchestrator__App%20v0.3.1-6f42c1?logo=github)](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/releases/tag/v0.3.1)
+[![upstream](https://img.shields.io/badge/upstream-HCW--MigrateOrchestrator__App%20v0.4.1-6f42c1?logo=github)](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/releases/tag/v0.4.1)
 [![node](https://img.shields.io/badge/node-%3E%3D26-339933?logo=node.js&logoColor=white)](docs/adr/ADR-0029-node-26-runtime-floor.md)
 [![docker hub](https://img.shields.io/badge/docker.io-hybridcloudworks%2Fimg--mo--lab--addon-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/hybridcloudworks/img-mo-lab-addon)
 [![license](https://img.shields.io/github/license/saulpatinojr/HCW-MigrateOrchestrator_AddOn)](LICENSE)
