@@ -17,12 +17,16 @@ import { fileURLToPath } from "node:url";
 // Python up only when it is given a `python-version` at or above the floor.
 //
 // A command counts when it is in command position on a line of a `run:` step: at the start, after `$(`, `<(`, a
-// backtick, `(`, `{`, `|`, `&` or `;`, after leading `NAME=value` assignments (the value plain text, a quoted string, or
-// both run together), or after a word that runs the next one (`env`, `sudo`, `xargs`, `exec`, `time`, `!`, `if`,
-// `then`, `do` and the like). It does not count inside a quoted
-// string (unless a double-quoted string runs a command with `$(`, `<(` or a backtick) or as an argument (`docker run
-// image python ...`). The set-up step must come before the first such step. Limits, on purpose: a job that runs in a
-// `container:` uses that image's runtime and is not checked; and a script a step calls (a `.sh` file) is not read.
+// backtick, `(`, `{`, `|`, `&` or `;`, after a `case` pattern at the start of a line (`check)`), after leading
+// `NAME=value` assignments (the value plain text, a quoted string, or both run together), or after a word that runs the
+// next one (`env`, `sudo`, `xargs`, `exec`, `time`, `nice`, `!`, `if`, `then`, `do` and the like) and that word's
+// options (`sudo -u nobody`, `env -i`). It counts with a path in front too (`/usr/bin/python3`, `./venv/bin/python`),
+// because a path to the runner's interpreter is still the runner's, and `python3.15.2` counts like `python3`. It does
+// not count in a comment, a heredoc's body, a quoted string (unless a double-quoted string runs a command with `$(`,
+// `<(` or a backtick; a single-quoted one may run over several lines, as a `docker run image bash -c '...'` script
+// does) or as an argument (`docker run image python ...`, or the first word of a line that continues the one before
+// it). The set-up step must come before the first such step. Limits, on purpose: a job that runs in a `container:` uses
+// that image's runtime and is not checked; and a script a step calls (a `.sh` file) is not read.
 //
 // A set-up step with its own `if:` may be skipped while a later command still runs on the runner's own interpreter
 // (Copilot on HCW-NetworkEyes_AddOn#100), so it covers a later step only when that step's `if:` is the same condition,
@@ -35,16 +39,18 @@ import { fileURLToPath } from "node:url";
 // The job's status is compared on its own. Without `always()`, `failure()`, `cancelled()` or `success()` in it, a step's
 // condition includes an unwritten `success()`, so a set-up step with no `if:` is skipped once an earlier step has
 // failed, while a later `if: always()`, `failure()` or `!cancelled()` step still runs (Copilot on
-// HCW-MigrateOrchestrator_AddOn#72). So the statuses a later step can run under (after success, after a failure, after
-// a cancel) must all be ones its set-up step runs under too, and the rule above is applied to the conditions with their
-// status-only `&&` terms taken out.
+// HCW-MigrateOrchestrator_AddOn#72). So after each job status (success, a failure, a cancel) a later step may run
+// after, its set-up step must surely run, or depend on the same thing by the rule above, applied to the conditions with
+// their status-only `&&` terms taken out. `||`, `&&`, `!` and parentheses are followed: `always() && !cancelled()` runs
+// after success and failure, not after a cancel.
 //
 // Each set-up step must also ask for the floor or newer (Copilot on HCW-CloudCrawler_App#81): `python-version` or
 // `python-version-file`, `node-version` or `node-version-file`, read through `${{ env.X }}` (the step's, job's or
 // workflow's `env:`), `${{ matrix.X }}` (every entry of the job's matrix list) and the named file. A version that names
-// a line only (`26`, `3.15`) stands for that line's newest release, so it passes when the line is at or above the
-// floor's; an exact version (`26.10.0`) must be at or above the floor itself. A value this test cannot work out fails
-// it, naming the step, rather than passing unchecked.
+// a line only (`26`, `26.x`, `3.15`) stands for that line's newest release, so it passes when the line is at or above
+// the floor's; an exact version (`26.10.0`) must be at or above the floor itself; anything else (`26.11.0-rc.1`,
+// `26.11.0.0`, `lts/*`) cannot be compared. A value this test cannot work out fails it, naming the step, rather than
+// passing unchecked.
 //
 // The workflows are read with a small line reader rather than a YAML library, because none is a dependency here. It
 // relies on the layout every workflow in this repository has (a `jobs:` key at the top level, a `steps:` list, block
@@ -63,10 +69,26 @@ const RUNNER_DEFAULT_ALLOWED = {};
 // (the value plain text, a quoted string, or both run together: `FOO="a b"`) and words that run the next word
 // (`env FOO=1 node`, `sudo node`, `if node ...; then`).
 const ASSIGNMENT = String.raw`[A-Za-z_][A-Za-z0-9_]*=(?:"(?:[^"\\]|\\.)*"|'[^']*'|[^\s"'])*\s+`;
-const START = String.raw`(?:^|[$<]\(\s*|\`\s*|[({|;&]\s*)(?:${ASSIGNMENT}|(?:env|sudo|xargs|exec|time|nice|command|if|then|else|elif|do|while|until|!)\s+)*`;
+// Words that run the next word, each with the options it may take first: the letters of the options that take an
+// argument (`sudo -u nobody`, `nice -n 10`), and any other `-x`/`--long` flag. `command` only with `-p`, because
+// `command -v node` looks node up and runs nothing.
+const WRAPPER_OPTIONS = { env: "uCS", sudo: "ugCDhprtU", xargs: "InPLdaEs", exec: "a", time: "of", nice: "n" };
+const WRAPPERS = [
+  ...Object.entries(WRAPPER_OPTIONS).map(
+    ([word, takes]) => String.raw`${word}(?:\s+(?:-[A-Za-z]*[${takes}]\s*[^\s-]\S*|--?\w[\w-]*(?:=\S+)?))*\s+`,
+  ),
+  String.raw`command(?:\s+-p)*\s+`,
+  String.raw`(?:if|then|else|elif|do|while|until|!)\s+`,
+].join("|");
+// A `case` pattern that ends at the start of a line (`check)`, `a|b)`), after which a command may follow.
+const CASE_PATTERN = String.raw`^[^()\s|]+(?:\|[^()\s|]+)*\)\s*`;
+const START = String.raw`(?:^|[$<]\(\s*|\`\s*|[({|;&]\s*|${CASE_PATTERN})(?:${ASSIGNMENT}|${WRAPPERS})*`;
+// A runtime may be named with a path in front (`/usr/bin/python3`, `./venv/bin/python`): a path to the runner's own
+// interpreter is still the runner's. The path holds no `=`, so an assignment (`NODE=/x/node`) is not a command.
+const PATH = String.raw`(?:[^\s=]*/)?`;
 const COMMAND = {
-  node: new RegExp(`${START}(?:node|npm|npx)(?=\\s|$)`),
-  python: new RegExp(`${START}(?:python(?:3(?:\\.\\d+)?)?|pip3?|uvx?)(?=\\s|$)`),
+  node: new RegExp(`${START}${PATH}(?:node|npm|npx)(?=\\s|$)`),
+  python: new RegExp(`${START}${PATH}(?:python(?:3(?:\\.\\d+){0,2})?|pip3?|uvx?)(?=\\s|$)`),
 };
 const SETUP = { node: /^actions\/setup-node@/, python: /^actions\/setup-python@/ };
 // astral-sh/setup-uv sets Python up only when given a `python-version` (see `setsUp`).
@@ -80,28 +102,77 @@ const FLOORS = { python: PYTHON_FLOOR, node: NODE_FLOOR };
 // The job statuses a step can run after, and the status functions that name them.
 const STATUSES = ["success", "failure", "cancelled"];
 const STATUS_CALL = /(!?)\s*\b(always|failure|cancelled|success)\(\s*\)/g;
+const HAS_STATUS = /\b(?:always|failure|cancelled|success)\(\s*\)/;
 // The set-up step's inputs that name the version, directly or through a file in the repository.
 const VERSION_INPUTS = {
   python: ["python-version", "python-version-file"],
   node: ["node-version", "node-version-file"],
 };
 
-// The line with the text of its quoted strings taken out, so words in a message (`echo "...; if pip named..."`) do not
-// count. A double-quoted string that runs a command (`"$(node x)"`, or the older "`node x`") is kept. An escaped
-// backtick (`\``, as in Markdown written to the step summary) is a plain character, so it is dropped first.
-const withoutQuotedText = (line) =>
-  line
-    .replace(/\\`/g, "")
-    .replace(/'[^']*'/g, "''")
-    .replace(/"(?:[^"\\]|\\.)*"/g, (q) => (/[$<]\(|`/.test(q) ? q : '""'));
+/**
+ * The script as the shell reads it, for finding commands: comments and heredoc bodies dropped, a line that ends in `\`
+ * joined to the next (so the next line's first word is still an argument), single-quoted text emptied, and double-quoted
+ * text emptied unless it runs a command (`"$(node x)"`, or the older "`node x`"). An escaped backtick (`\``, as in
+ * Markdown written to the step summary) is a plain character. A quoted string may run over several lines, as the script
+ * of `docker run image bash -c '...'` does; what it runs is the container's, not the runner's.
+ */
+export function shellText(run) {
+  const out = [];
+  let heredocs = [];
+  let i = 0;
+  const n = run.length;
+  while (i < n) {
+    const char = run[i];
+    if (char === "\\" && i + 1 < n) {
+      out.push(run[i + 1] === "\n" ? " " : run[i + 1] === "`" ? "" : run.slice(i, i + 2));
+      i += 2;
+    } else if (char === "'") {
+      const end = run.indexOf("'", i + 1);
+      out.push("''");
+      i = end === -1 ? n : end + 1;
+    } else if (char === '"') {
+      let j = i + 1;
+      let text = "";
+      while (j < n && run[j] !== '"') {
+        const step = run[j] === "\\" && j + 1 < n ? 2 : 1;
+        text += run.slice(j, j + 2) === "\\`" ? "" : run.slice(j, j + step);
+        j += step;
+      }
+      out.push(/[$<]\(|`/.test(text) ? `"${text}"` : '""');
+      i = j + 1;
+    } else if (char === "#" && (i === 0 || " \t\n;".includes(run[i - 1]))) {
+      const end = run.indexOf("\n", i);
+      i = end === -1 ? n : end;
+    } else if (run.startsWith("<<", i) && !run.startsWith("<<<", i)) {
+      const found = run.slice(i).match(/^<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1/);
+      if (found) heredocs.push(found[2]);
+      out.push("<<");
+      i += found ? found[0].length : 2;
+    } else if (char === "\n" && heredocs.length) {
+      out.push("\n");
+      i += 1;
+      for (const delimiter of heredocs) {
+        while (i < n) {
+          const end = run.indexOf("\n", i) === -1 ? n : run.indexOf("\n", i);
+          const line = run.slice(i, end);
+          i = end + 1;
+          if (line.trim() === delimiter) break;
+        }
+      }
+      heredocs = [];
+    } else {
+      out.push(char);
+      i += 1;
+    }
+  }
+  return out.join("");
+}
 
-/** True when a run script calls the runtime in command position on a line that is not a comment. */
+/** True when a run script calls the runtime in command position (see `shellText` for what is left out). */
 export function runsRuntime(run, kind) {
-  return String(run ?? "")
+  return shellText(String(run ?? ""))
     .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("#"))
-    .some((line) => COMMAND[kind].test(withoutQuotedText(line)));
+    .some((line) => COMMAND[kind].test(line.trim()));
 }
 
 const indentOf = (line) => line.length - line.trimStart().length;
@@ -335,19 +406,45 @@ function topLevelTerms(expression, operator = "||", unwrap = true) {
 export const condition = (step) => normalized(String(step?.if ?? ""));
 
 /**
- * The job statuses a step with this condition can run after: `success` alone when it names no status function (the
- * unwritten `success()`), all three for `always()`, `success` and `failure` for `!cancelled()`, and so on.
+ * Whether a condition holds after the job so far ended in `status` (success, failure or cancelled): true, false, or
+ * null when it also depends on something else (`steps.x.outputs.y == 'true'`). `||`, `&&`, `!` and parentheses are
+ * followed, so `always() && !cancelled()` holds after success and failure only; anything that is not a status function
+ * or `true`/`false` is unknown.
  */
-export function statuses(expression) {
-  const found = [...expression.matchAll(STATUS_CALL)];
-  if (!found.length) return new Set(["success"]);
-  const named = new Set();
-  for (const [, negated, call] of found) {
-    const meant = call === "always" ? STATUSES : [call];
-    for (const status of STATUSES) if (meant.includes(status) !== Boolean(negated)) named.add(status);
+function statusValue(expression, status) {
+  let text = expression.trim();
+  while (withoutOuterParentheses(text) !== text) text = withoutOuterParentheses(text);
+  for (const [operator, decides] of [
+    ["||", true],
+    ["&&", false],
+  ]) {
+    const terms = topLevelTerms(text, operator, false);
+    if (terms.length > 1) {
+      const values = terms.map((term) => statusValue(term, status));
+      if (values.includes(decides)) return decides;
+      return values.includes(null) ? null : !decides;
+    }
   }
-  return named;
+  if (text.startsWith("!") && !text.startsWith("!=")) {
+    const value = statusValue(text.slice(1), status);
+    return value === null ? null : !value;
+  }
+  const call = text.match(/^(always|failure|cancelled|success)\(\s*\)$/);
+  if (call) return call[1] === "always" || call[1] === status;
+  return text === "true" ? true : text === "false" ? false : null;
 }
+
+/**
+ * `statusValue` of a step's whole condition, with GitHub's unwritten `success() &&` in front of one that names no status
+ * function (and of no condition at all).
+ */
+function runsAfter(expression, status) {
+  if (!HAS_STATUS.test(expression) && status !== "success") return false;
+  return expression ? statusValue(expression, status) : true;
+}
+
+/** The job statuses a step with this condition may run after (`success` alone for no status function). */
+export const statuses = (expression) => new Set(STATUSES.filter((status) => runsAfter(expression, status) !== false));
 
 /** The condition without its top-level `&&` terms that test only the job's status (`always()`, `!cancelled()`). */
 function withoutStatus(expression) {
@@ -357,16 +454,22 @@ function withoutStatus(expression) {
 }
 
 /**
- * True when a set-up step runs whenever the later step does: it runs after every job status the later step can run
- * after, and, status terms aside, it has no `if:`, the same `if:`, or an `if:` whose top-level `||` terms include the
- * later step's.
+ * True when a set-up step runs whenever the later step does: after every job status the later step may run after, the
+ * set-up step surely runs, or its condition depends on the same thing (status terms aside: the same condition, or one
+ * of the terms it joins with a top-level `||`).
  */
 export function covers(setup, step) {
-  const given = statuses(condition(setup));
-  if (![...statuses(condition(step))].every((status) => given.has(status))) return false;
-  const wanted = withoutStatus(condition(step));
-  const rest = withoutStatus(condition(setup));
-  return rest === "" || rest === wanted || topLevelTerms(rest, "||").includes(wanted);
+  const [given, wanted] = [condition(setup), condition(step)];
+  for (const status of [...STATUSES].sort()) {
+    if (runsAfter(wanted, status) === false) continue;
+    const runs = runsAfter(given, status);
+    if (runs === false) return false;
+    if (runs === null) {
+      const [rest, need] = [withoutStatus(given), withoutStatus(wanted)];
+      if (!(rest === "" || rest === need || topLevelTerms(rest, "||").includes(need))) return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -443,16 +546,20 @@ export function requestedVersions(step, job, kind, root = ROOT) {
 }
 
 /**
- * true when the version is under the floor, false when at or above it, null when it is not a version number. A version
- * that names a line only (`26`, `3.15`, `26.x`) means that line's newest release, so only its numbers are compared with
- * the floor's (`26` with 26, `3.15` with 3.15); an exact one (`26.10.0`) is compared in full.
+ * true when the version is under the floor, false when at or above it, null when it is not one of the forms this test
+ * reads: `N`, `N.x` and `N.M` name a line and mean its newest release, so only their numbers are compared with the
+ * floor's (`26` with 26, `3.15` with 3.15); `N.M.P` is exact and compared in full. Anything else, trailing text included
+ * (`26.11.0-rc.1`, `26.11.0.0`, `lts/*`), is null, so the floor test names the step.
  */
 export function belowFloor(version, kind) {
   const found = String(version)
     .trim()
-    .match(/^v?(\d+(?:\.\d+)*)/);
+    .match(/^v?(\d+)(?:\.x|\.(\d+)(?:\.(\d+))?)?$/);
   if (!found) return null;
-  const numbers = found[1].split(".").map(Number).slice(0, 3);
+  const numbers = found
+    .slice(1)
+    .filter((number) => number !== undefined)
+    .map(Number);
   const floor = FLOORS[kind];
   for (let i = 0; i < numbers.length; i += 1) if (numbers[i] !== floor[i]) return numbers[i] < floor[i];
   return false;
@@ -487,6 +594,11 @@ test("runsRuntime finds node and python in command position", () => {
     "env FOO=1 node x",
     "env FOO='bar baz' node x.js",
     'FOO="a b"\'c d\'e node x.js',
+    "/opt/node/bin/node x.js",
+    "env -i npm ci",
+    "nice -n 10 node x.js",
+    "xargs -n 1 node",
+    "a|b) node x.js ;;",
     "sudo node x",
     "xargs node x",
     "diff a <(node x)",
@@ -512,6 +624,18 @@ test("runsRuntime finds node and python in command position", () => {
     "uv run python scripts/check.py",
     'FOO="bar baz" python3 check.py',
     'STAMP="$(date +%s) run" python3 check.py',
+    "/usr/bin/python3 -I check.py",
+    "/opt/az/bin/python3 -Im pip check",
+    "./venv/bin/python x.py",
+    "zizmor-env/bin/python -m pip install zizmor",
+    "python3.15.2 -c 'print(1)'",
+    "/usr/bin/python3 -c 'print(1)'",
+    "env -i python3 check.py",
+    "sudo -u nobody python3 check.py",
+    "sudo -u runner python3 check.py",
+    "time -p python3 check.py",
+    "check) python3 scripts/check.py ;;",
+    "docker run --rm img bash -c 'x' && python3 y.py",
   ];
   for (const line of python) assert.equal(runsRuntime(line, "python"), true, line);
 });
@@ -520,16 +644,21 @@ test("runsRuntime does not count words that are not commands", () => {
   const cases = [
     ['echo "run \\`node scripts/x.mjs\\` by hand"', "node"],
     ['docker run --rm img python -c "import azure"', "python"],
-    ["/opt/az/bin/python3 -Im pip check", "python"],
     ["# node is not run here", "node"],
     ['for node in items["nodes"]:', "node"],
     ['echo "$NODE_VERSION"', "node"],
     ["nodes=3 nodejs-check", "node"],
     ['echo "the stage is wrong; if pip named the file differently, look"', "python"],
-    ["zizmor-env/bin/python -m pip install zizmor", "python"],
     ["echo 'literal `python3` text'", "python"],
     ["uvicorn app:main", "python"],
     ['FOO="python3 x" true', "python"],
+    ["NODE_BIN=/opt/node/bin/node", "node"],
+    ["command -v node", "node"],
+    ["echo $(foo) python3 x", "python"],
+    ["docker run --rm img bash -c '\n  /opt/az/bin/python3 -Im pip check\n'", "python"],
+    ["docker run --rm img \\\n  /opt/az/bin/python3 -Im pip check", "python"],
+    ["cat > x.txt <<'EOF'\npython3 is named here\nEOF", "python"],
+    ["echo x # node y", "node"],
   ];
   for (const [line, kind] of cases) assert.equal(runsRuntime(line, kind), false, line);
 });
@@ -683,9 +812,32 @@ test("covers compares normalised conditions and top-level || terms", () => {
     ["always() && a", "!cancelled() && a", true],
     ["a", "failure() && a", false],
     ["always()", "a || b", true],
+    // Status functions joined by `&&` and `||` (Copilot on HCW-CloudAssessor_AddOn#89).
+    ["always() && !cancelled()", "cancelled()", false],
+    ["always() && !cancelled()", "failure()", true],
+    ["failure() || cancelled()", "cancelled()", true],
+    ["failure() || cancelled()", "", false],
+    ["success() || failure()", "!cancelled()", true],
   ];
   for (const [setup, step, covered] of cases) {
     assert.equal(covers({ if: setup }, { if: step }), covered, `${setup} / ${step}`);
+  }
+});
+
+test("statuses follow &&, || and !", () => {
+  const cases = [
+    ["", ["success"]],
+    ["a", ["success"]],
+    ["always()", ["success", "failure", "cancelled"]],
+    ["!cancelled()", ["success", "failure"]],
+    ["always() && !cancelled()", ["success", "failure"]],
+    ["failure() || cancelled()", ["failure", "cancelled"]],
+    ["(failure() || cancelled()) && a", ["failure", "cancelled"]],
+    ["!(failure() || cancelled())", ["success"]],
+    ["false", []],
+  ];
+  for (const [expression, expected] of cases) {
+    assert.deepEqual([...statuses(expression)].sort(), [...expected].sort(), expression);
   }
 });
 
@@ -703,6 +855,11 @@ test("a line meets the floor by its line, an exact version in full", () => {
     ["3.14.9", "python", true],
     ["3.14", "python", true],
     ["lts/*", "node", null],
+    ["26.11.0-not-a-version", "node", null],
+    ["26.11.0garbage", "node", null],
+    ["26.11.0-rc.1", "node", null],
+    ["26.11.0.0", "node", null],
+    ["3.15.0b4", "python", null],
   ];
   for (const [version, kind, below] of cases) assert.equal(belowFloor(version, kind), below, version);
 });

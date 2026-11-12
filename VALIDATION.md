@@ -18,8 +18,8 @@ environment used the runner's own Python (3.14 on `ubuntu-26.04`), below the pro
   only one on the runner's own version. actionlint 1.7.12 with shellcheck 0.11.0 and zizmor 1.31.1 `--offline`, the
   versions `ci.yml` pins: no findings. `npm ci`; `npm test` — 157 pass before the check existed. The check's own count
   grew as review added cases, so each total names its commit: **163 pass** at `948b477` (157 plus the check's 6),
-  **167 pass** at `a2738cc` (its 10), and **169 pass, 0 fail** on the final head, the commit after `a2738cc` that adds
-  this paragraph (157 plus the check's 12). The new check's workflow reader was compared with PyYAML (outside the test)
+  **167 pass** at `a2738cc` (its 10), **169 pass** at `6e63dfc` (its 12), and **170 pass, 0 fail** on the final head,
+  the commit after `6e63dfc` (157 plus the check's 13; its new cases sit inside existing tests). The new check's workflow reader was compared with PyYAML (outside the test)
   on all 366 steps of the four add-ons' workflows: the same jobs, containers and step `name`, `uses` and `run` values.
   On a scratch worktree at `948b477` with the new setup-python step removed from `ci.yml`, the check failed (5 pass,
   1 fail), naming
