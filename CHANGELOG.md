@@ -5,6 +5,7 @@ The engine, rules, CLI and UI components are versioned and released upstream in 
 
 ## Unreleased
 
+- **The zizmor install in CI runs on Python 3.15, not on the runner's own Python** ([HCW-HybridCloudWorks#1707](https://github.com/saulpatinojr/HCW-HybridCloudWorks/issues/1707)). zizmor (the workflow security linter) is a Python program, and the `build-test` job of `ci.yml` made its environment with whatever `python3` the GitHub-hosted runner (the machine GitHub lends each job) carries, Python 3.14 today, older than the program's floor of 3.15. A pinned `actions/setup-python` step (v7.1.0, the commit the other add-ons pin) now installs Python 3.15 first, with no cache, and runs after an earlier failure too, like the install step. This repository has no `.python-version`, so the line is written in the step. Every other job here already sets up Node.js 26 itself. CI only.
 - The README's "upstream" badge names the release this edition actually pins, [`v0.4.1`](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/releases/tag/v0.4.1) (it still said `v0.3.1`), and `docs/deployment/lab-host.md` stops giving `v0.3.0` as the lab host's `image_tag`: the row now says the tag is `v` plus the version in `package.json` (`v0.3.4` since 2026-11-09), and the release steps call `v0.3.4` the latest release rather than the one being prepared. Documentation only.
 
 ## 0.3.4 — 2026-11-09: the lab image is rebuilt so Debian's fixed zlib is included
