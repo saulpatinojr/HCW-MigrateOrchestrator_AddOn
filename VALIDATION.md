@@ -16,10 +16,13 @@ environment used the runner's own Python (3.14 on `ubuntu-26.04`), below the pro
 - **Executed:** a script over the parsed YAML of every workflow, listing each call of `node`, `npm`, `npx`, `python`,
   `python3` or `pip` as a command and whether a setup step chose the version first: the zizmor `python3 -m venv` was the
   only one on the runner's own version. actionlint 1.7.12 with shellcheck 0.11.0 and zizmor 1.31.1 `--offline`, the
-  versions `ci.yml` pins: no findings. `npm ci`; `npm test` — **163 pass, 0 fail** (157 before, plus the 6 of the new
-  check). The new check's workflow reader was compared with PyYAML (outside the test) on all 366 steps of the four
-  add-ons' workflows: the same jobs, containers and step `name`, `uses` and `run` values. On a scratch worktree with the
-  new setup-python step removed from `ci.yml`, the new check failed (5 pass, 1 fail), naming
+  versions `ci.yml` pins: no findings. `npm ci`; `npm test` — 157 pass before the check existed. The check's own count
+  grew as review added cases, so each total names its commit: **163 pass** at `948b477` (157 plus the check's 6),
+  **167 pass** at `a2738cc` (its 10), and **169 pass, 0 fail** on the final head, the commit after `a2738cc` that adds
+  this paragraph (157 plus the check's 12). The new check's workflow reader was compared with PyYAML (outside the test)
+  on all 366 steps of the four add-ons' workflows: the same jobs, containers and step `name`, `uses` and `run` values.
+  On a scratch worktree at `948b477` with the new setup-python step removed from `ci.yml`, the check failed (5 pass,
+  1 fail), naming
   `ci.yml > build-test > Install actionlint, hadolint and zizmor (pinned, digests checked) > python`.
 - **Not executed:** the `build-test` job on GitHub (the pull request's own run is the check); hadolint (no Dockerfile
   changed); `npm run e2e` (nothing here touches the pane or the API); the tests on Node 26.
