@@ -3,6 +3,30 @@
 Web-front edition (`saulpatinojr/HCW-MigrateOrchestrator_AddOn`, ADR-0028). Everything below distinguishes what was executed
 from what was not. Engine, rule and UI validation lives upstream in `saulpatinojr/HCW-MigrateOrchestrator_App/VALIDATION.md`.
 
+## The zizmor install runs on Python 3.15 (2026-11-12, HCW-HybridCloudWorks#1707)
+
+What changed: one `actions/setup-python` step (Python `3.15`, no cache, `if: ${{ !cancelled() }}`) in the `build-test`
+job of `.github/workflows/ci.yml`, before the step that makes zizmor's environment with `python3 -m venv`. Before it, that
+environment used the runner's own Python (3.14 on `ubuntu-26.04`), below the program's floor of 3.15. A new test,
+`tests/security/workflow-runtime-setup.test.mjs`, fails any workflow step that runs `node`, `npm`, `npx`, `python`,
+`python3` or `pip` before its job has set the version up; it lists no exception here.
+
+- **Environment:** Linux cloud session, Node 22.23.4 and its npm (not Node 26: the session has no Node 26, so `npm ci`
+  warned `EBADENGINE`).
+- **Executed:** a script over the parsed YAML of every workflow, listing each call of `node`, `npm`, `npx`, `python`,
+  `python3` or `pip` as a command and whether a setup step chose the version first: the zizmor `python3 -m venv` was the
+  only one on the runner's own version. actionlint 1.7.12 with shellcheck 0.11.0 and zizmor 1.31.1 `--offline`, the
+  versions `ci.yml` pins: no findings. `npm ci`; `npm test` — 157 pass before the check existed. The check's own count
+  grew as review added cases, so each total names its commit: **163 pass** at `948b477` (157 plus the check's 6),
+  **167 pass** at `a2738cc` (its 10), **169 pass** at `6e63dfc` (its 12), and **170 pass, 0 fail** on the final head,
+  the commit after `6e63dfc` (157 plus the check's 13; its new cases sit inside existing tests). The new check's workflow reader was compared with PyYAML (outside the test)
+  on all 366 steps of the four add-ons' workflows: the same jobs, containers and step `name`, `uses` and `run` values.
+  On a scratch worktree at `948b477` with the new setup-python step removed from `ci.yml`, the check failed (5 pass,
+  1 fail), naming
+  `ci.yml > build-test > Install actionlint, hadolint and zizmor (pinned, digests checked) > python`.
+- **Not executed:** the `build-test` job on GitHub (the pull request's own run is the check); hadolint (no Dockerfile
+  changed); `npm run e2e` (nothing here touches the pane or the API); the tests on Node 26.
+
 ## Release 0.3.4 prepared: rebuild for Debian's zlib fix (2026-11-09)
 
 What changed: the version only (0.3.3 to 0.3.4 in the root and both workspace `package.json` files, `package-lock.json`
