@@ -3,6 +3,30 @@
 Web-front edition (`saulpatinojr/HCW-MigrateOrchestrator_AddOn`, ADR-0028). Everything below distinguishes what was executed
 from what was not. Engine, rule and UI validation lives upstream in `saulpatinojr/HCW-MigrateOrchestrator_App/VALIDATION.md`.
 
+## The workflow runtime check is ported from the website's finished copy (2026-11-13, HCW-HybridCloudWorks#1707)
+
+What changed: `tests/security/workflow-runtime-setup.test.mjs` only. Its checking logic is copied unchanged from the
+website's `scripts/workflow-runtime-setup.test.mjs` (merged as HCW-HybridCloudWorks#1716 at `ff5cbc29`), plus the empty
+`PIPX_DEFAULT_PYTHON` fix the NetworkEyes App made after review (its commit `5a19ed0`), which the website is getting in
+a follow-up. This repository's own parts stay: the written-in floors, the line reader, the set-up version checks, and the
+empty `RUNNER_DEFAULT_ALLOWED`, `INDIRECT_RUNTIME` and `PIPX_ALLOWED` lists. No workflow changed.
+
+- **Environment:** Linux cloud session, Node 26.13.1 and npm 11.20.0.
+- **Executed:** `npm ci`; `npm test` — **183 pass, 0 fail** (157 plus the check's 26). The check alone under
+  `node --test`: 26 pass. Every script a workflow step calls was read for a runtime it starts: `scripts/package-repository.sh`
+  (zip, unzip only), `scripts/core-update-pin.mjs` and `scripts/check-release-version.mjs` (started with `node`, which the
+  check sees; they start only git), so `INDIRECT_RUNTIME` is empty. Equivalence: the website's exported functions (taken
+  from `origin/main`, vitest and the tests removed) and this port's were run on the shared case lists (172 `runsRuntime`
+  rows; 365 rows of `runsRuntime`, `setupCovers` and `pipxWithoutPython`) and on the `run:` text of 733 real workflow
+  steps from the website and the add-on and App repositories, in three saved snapshots (7,134 comparisons in all): no disagreement, with
+  and without the empty-value fix applied to the website's copy. Of ten further `PIPX_DEFAULT_PYTHON` cases, five (each
+  an empty value) differ from the website's `main`, exactly where the fix is meant to, and all ten match the website's
+  copy with the fix applied. On copies of `ci.yml` held in memory, removing the
+  setup-python step, removing the e2e job's setup-node step, or replacing the zizmor `python3 -m venv` with
+  `pipx install zizmor` each made the check report the right step.
+- **Not executed:** the `build-test` job on GitHub (the pull request's own run is the check); actionlint, zizmor and
+  hadolint (no workflow or Dockerfile changed); `npm run e2e` (nothing here touches the pane or the API).
+
 ## The zizmor install runs on Python 3.15 (2026-11-12, HCW-HybridCloudWorks#1707)
 
 What changed: one `actions/setup-python` step (Python `3.15`, no cache, `if: ${{ !cancelled() }}`) in the `build-test`
