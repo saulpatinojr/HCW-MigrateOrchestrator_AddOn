@@ -3,6 +3,31 @@
 Web-front edition (`saulpatinojr/HCW-MigrateOrchestrator_AddOn`, ADR-0028). Everything below distinguishes what was executed
 from what was not. Engine, rule and UI validation lives upstream in `saulpatinojr/HCW-MigrateOrchestrator_App/VALIDATION.md`.
 
+## The workflow runtime check is brought up to the website's round two (2026-11-13, HCW-HybridCloudWorks#1707)
+
+What changed: `tests/security/workflow-runtime-setup.test.mjs` only. Its checking logic and test cases are copied
+unchanged from the website's `scripts/workflow-runtime-setup.test.mjs` as merged in HCW-HybridCloudWorks#1719 (single
+quotes written as double quotes, `expect` written as `assert`). This repository's own parts stay: the written-in floors,
+the line reader (now reading YAML null, block text with an indentation number, folded text and a block ending at a
+comment line as YAML does, and refusing one-line steps), the floor check on every workflow, and the lists, all empty,
+with the new `BELOW_FLOOR_ALLOWED`. No workflow changed.
+
+- **Environment:** Linux cloud session, Node 26.13.1 (downloaded from nodejs.org, its sha256 matched `SHASUMS256.txt`)
+  and npm 11.20.0.
+- **Executed:** `npm ci`; `npm test` — **206 pass, 0 fail**, 49 of them in this file. Equivalence: the website's copy
+  (from its `origin/main`, vitest and the tests taken out) and this port gave the same answer on 66,845 cases (the
+  round-two case set plus every call the website's and both MigrateOrchestrator test files make) and on the 103 workflow
+  and composite-action files of the nine HCW repositories and a folder of made-up workflows: 0 disagreements. On this
+  repository's workflows the new copy reports nothing the copy on `main` did not. The reader was compared with the
+  `yaml` library on the same 103 files (224 jobs, 1,361 steps): every value the check reads is the same, apart from a
+  trailing YAML comment kept on five one-line `run:` values (the shell drops it too) and one matrix made of mappings,
+  which the check never reads as a version. In a scratch copy, the reader without its comment-line rule failed the test
+  written for it.
+- **Not executed:** the `build-test` job on GitHub (the pull request's own run is the check); actionlint, zizmor and
+  hadolint (no workflow or Dockerfile changed); `npm run e2e` (nothing here touches the pane or the API).
+- **Limitation, on purpose:** the line reader refuses steps written on one line (`steps: [{...}]`, `- {...}`), which
+  the website's YAML library reads; such a file fails the test rather than being read as having no steps.
+
 ## The workflow runtime check is ported from the website's finished copy (2026-11-13, HCW-HybridCloudWorks#1707)
 
 What changed: `tests/security/workflow-runtime-setup.test.mjs` only. Its checking logic is copied unchanged from the
