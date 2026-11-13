@@ -16,13 +16,14 @@
 
 ## Infrastructure (if `infrastructure/**` or `docker-compose.yml` changed)
 
-- [ ] `terraform fmt -check` / `validate` output, or the workflow run link
+- [ ] Terraform (`infrastructure/coder/**`): `terraform fmt -check` / `validate` output, or the `iac-validate` run link — or not applicable
+- [ ] Docker (`infrastructure/docker/Dockerfile.lab`, `docker-compose.yml`): hadolint passes in CI, and the `publish-images.yml` dry-run link if the image changed — or not applicable
 - [ ] No privileged containers, Docker socket exposure or secrets introduced
 
 ## Security and data review
 
 - [ ] The lab still cannot construct an Azure provider (`tests/security/edition-boundary.test.mjs` passes)
-- [ ] No secrets, tokens, customer inventories or real tenant/subscription ids, fixtures and tests included
+- [ ] No secrets, tokens, customer inventories or real tenant/subscription ids anywhere, including in fixtures and tests (placeholders only)
 - [ ] No vendor names in anything a visitor can read in the pane
 - [ ] The limits, CORS, human verification, rate limit and "not production" labels are unchanged — or the change is explained above
 
