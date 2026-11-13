@@ -25,6 +25,12 @@ with the new `BELOW_FLOOR_ALLOWED`. No workflow changed.
   written for it.
 - **Not executed:** the `build-test` job on GitHub (the pull request's own run is the check); actionlint, zizmor and
   hadolint (no workflow or Dockerfile changed); `npm run e2e` (nothing here touches the pane or the API).
+- **After review (2026-11-13):** the fixes for pipx's GitHub expressions, `pythonLocation`, resolved paths and `(a || b)
+  && c` conditions, from the canonical Python copy (HCW-NetworkEyes_App commit `8ac31182`), were applied here and in the
+  website's copy. `npm ci`; `npm test` — 211 passed, 0 failed, 54 of them in
+  `tests/security/workflow-runtime-setup.test.mjs`. This copy, the website's and the Python copy gave the same answer on
+  67,044 cases and on the 104 workflow and composite-action files of the nine HCW repositories and two folders of
+  made-up workflows: 0 disagreements. On the real repositories nothing new is reported compared with `main`.
 - **Limitation, on purpose:** the line reader refuses steps written on one line (`steps: [{...}]`, `- {...}`), which
   the website's YAML library reads; such a file fails the test rather than being read as having no steps.
 
