@@ -2330,10 +2330,11 @@ const YAML_ESCAPES = {
  * A plain (unquoted) value as YAML 1.2's core schema reads it and GitHub hands it on (round 3,
  * HCW-HybridCloudWorks#1707): null (`~`, `null`, nothing) empty, a boolean as `true` or `false`, and a number as
  * JavaScript writes it, so an unquoted `3.10` is `3.1`, as GitHub passes it to an action (actions/runner#849; the
- * website's YAML library reads it the same way).
+ * website's YAML library reads it the same way). A null is `nullAs` instead when a caller must tell it from a quoted
+ * empty value (`defaultShell`); every other caller keeps the default, empty.
  */
-function plain(text) {
-  if (NULL.has(text)) return "";
+function plain(text, nullAs = "") {
+  if (NULL.has(text)) return nullAs;
   if (["true", "True", "TRUE", "false", "False", "FALSE"].includes(text)) return text.toLowerCase();
   if (/^[-+]?[0-9]+$/.test(text) || /^(?:0o[0-7]+|0x[0-9a-fA-F]+)$/.test(text)) return String(Number(text));
   if (/^[-+]?\.(?:inf|Inf|INF)$/.test(text)) return text.startsWith("-") ? "-Infinity" : "Infinity";
@@ -2346,9 +2347,10 @@ function plain(text) {
  * A plain or quoted value on one line as YAML reads it (round 3, HCW-HybridCloudWorks#1707): a double-quoted one with
  * its escapes decoded (`"\x70ython3 x"` is `python3 x`), a single-quoted one with `''` read as `'`, a comment after
  * either dropped, and a plain one read by `plain`, its comment dropped too. A quoted value that does not close on its
- * line, or has text after it, stops the test (this reader does not fold a value over several lines).
+ * line, or has text after it, stops the test (this reader does not fold a value over several lines). A null is
+ * `nullAs` (see `plain`); a quoted value is never null, so `''` and `""` stay empty text.
  */
-function scalar(value) {
+function scalar(value, nullAs = "") {
   const text = value.trim();
   let decoded;
   let rest;
@@ -2381,11 +2383,12 @@ function scalar(value) {
     assert.ok(found, `a single-quoted value runs over more than one line: ${JSON.stringify(value)}`);
     [decoded, rest] = [found[1].replaceAll("''", "'"), text.slice(found[0].length)];
   } else {
-    const bare = text.replace(/\s+#.*$/, "").trim();
+    // A value that is only a comment (`shell: # x`, whose space the caller has already taken) is null, as YAML reads it.
+    const bare = text.startsWith("#") ? "" : text.replace(/\s+#.*$/, "").trim();
     // An anchor (`&a`), an alias (`*a`) or a tag (`!!str`) is not text: refused, as the website's reader refuses it
     // (round 3 review, HCW-HybridCloudWorks#1707).
     assert.ok(!/^[&*!]/.test(bare), `an anchor, alias or tag: ${JSON.stringify(value)}`);
-    return plain(bare);
+    return plain(bare, nullAs);
   }
   // A comment after a quoted value needs a space before its `#`, as YAML reads it (`"3.15"#x` is not YAML).
   assert.ok(/^(?:\s+#.*)?\s*$/.test(rest), `text after a quoted value: ${JSON.stringify(value)}`);
@@ -2529,9 +2532,9 @@ function flowEnd(text) {
  * the ports, HCW-HybridCloudWorks#1707: HCW-MigrateOrchestrator_AddOn#77, where the reader cut such a value at its
  * first `}`). Braces or quotes that do not balance stop the test, and so does a plain value holding `{`, `}`, `[` or
  * `]` (`{ shell: bash -e {0} }`), which YAML and the website's reader refuse in a one-line mapping. The same rule as
- * the Python copies' `_flow_mapping`.
+ * the Python copies' `_flow_mapping`. A null value is `nullAs` (see `plain`), nested mappings included.
  */
-function flowMapping(text) {
+function flowMapping(text, nullAs = "") {
   text = text.trim();
   assert.ok(
     text.startsWith("{") && flowEnd(text) === text.length - 1,
@@ -2547,14 +2550,14 @@ function flowMapping(text) {
   for (const [key, raw] of pairs) {
     const value = raw.trim();
     if (value.startsWith("{")) {
-      found[key.trim()] = flowMapping(value);
+      found[key.trim()] = flowMapping(value, nullAs);
       continue;
     }
     assert.ok(
       ["'", '"', "["].includes(value.slice(0, 1)) || !/[{}[\]]/.test(value),
       `a plain value with a brace or bracket in a one-line mapping: ${JSON.stringify(value)}`,
     );
-    found[key.trim()] = scalar(value);
+    found[key.trim()] = scalar(value, nullAs);
   }
   return found;
 }
@@ -2601,11 +2604,11 @@ function scalarLines(lines, at, indent, indicator) {
 
 /**
  * The mapping under the key on line `at`: a `{ ... }` on the same line, or the `key: value` lines below it, each value
- * plain, quoted, null (read as empty, see `scalar`) or a block scalar (`|`, `>-`, read as its text).
+ * plain, quoted, null (read as empty, or as `nullAs`; see `scalar`) or a block scalar (`|`, `>-`, read as its text).
  */
-function mappingAt(lines, at, indent) {
+function mappingAt(lines, at, indent, nullAs = "") {
   const rest = withoutComment(lines[at].slice(lines[at].indexOf(":") + 1)).trim();
-  if (rest.startsWith("{")) return flowMapping(rest);
+  if (rest.startsWith("{")) return flowMapping(rest, nullAs);
   const block = blockUnder(lines, at, indent);
   const keyed = block.filter(meaningful);
   const inner = keyed.length ? Math.min(...keyed.map(indentOf)) : indent + 2;
@@ -2628,7 +2631,7 @@ function mappingAt(lines, at, indent) {
       mapping[pair[1]] = blockScalar(lines, indicator, inner);
       index += lines.length;
     } else {
-      mapping[pair[1]] = scalar(pair[2]);
+      mapping[pair[1]] = scalar(pair[2], nullAs);
     }
   }
   return mapping;
@@ -2728,19 +2731,25 @@ function stepKeys(lines, keyIndent) {
 
 /**
  * The `run: shell:` of the `defaults:` key on line `at` (at `indent` spaces), written as a block or `{ ... }`; null
- * when it names none.
+ * when it names none or YAML reads it as null (`shell:`, `~`, `null`, `Null`, `NULL`, a comment only), so a job's
+ * null one falls back to the workflow's, as the website's copy reads it (`job.defaults.run.shell ??
+ * defaults.run.shell`). A quoted empty value (`''`, `""`) is text, not null, so it stays the job's own empty shell
+ * (the runner's default shell), as `??` keeps it there (Copilot on HCW-MigrateOrchestrator_AddOn#80; #1707).
  */
 function defaultShell(lines, at, indent) {
   const rest = withoutComment(lines[at].slice(lines[at].indexOf(":") + 1)).trim();
+  let shell;
   if (rest.startsWith("{")) {
     // Read as the nested one-line mapping it is (see `flowMapping`), so a quoted `{0}` or comma stays in its value.
-    const run = flowMapping(rest).run;
-    return run !== null && typeof run === "object" ? (run.shell ?? null) : null;
+    const run = flowMapping(rest, null).run;
+    shell = run !== null && typeof run === "object" ? run.shell : null;
+  } else {
+    const block = blockUnder(lines, at, indent);
+    const run = block.findIndex((line) => /^\s+run:/.test(line));
+    if (run === -1) return null;
+    shell = mappingAt(block, run, indentOf(block[run]), null).shell;
   }
-  const block = blockUnder(lines, at, indent);
-  const run = block.findIndex((line) => /^\s+run:/.test(line));
-  if (run === -1) return null;
-  return mappingAt(block, run, indentOf(block[run])).shell ?? null;
+  return shell ?? null;
 }
 
 /**
@@ -6535,6 +6544,57 @@ test("the line reader keeps whether a job's shell is its own, so a matrix value 
   assert.equal(jobs.inherits.jobShell, false);
   assert.equal(jobs.own.jobShell, true);
   assert.deepEqual(unsetSteps("x.yml", jobs, {}), ["x.yml > inherits > Run > node", "x.yml > inherits > Run > python"]);
+});
+
+// A job whose `defaults: run: shell:` is null (`shell:`, `~`, `null`, `Null`, `NULL` or only a comment) has no shell
+// of its own, so the workflow's applies, as the website's copy reads it (`job.defaults.run.shell ??
+// defaults.run.shell`). A quoted empty value (`''`, `""`) is text, so it stays the job's own empty shell, the runner's
+// default, as `??` keeps it. A job with a shell of its own still uses it (#1707, after round 4; Copilot on
+// HCW-MigrateOrchestrator_AddOn#80).
+test("the line reader gives a job with a null shell the workflow's, and a job with its own shell, even an empty one, keeps it", () => {
+  const workflow = (shell, jobDefaults) =>
+    [
+      "on: push",
+      "defaults:",
+      "  run:",
+      `    shell: ${shell}`,
+      "jobs:",
+      "  build:",
+      "    runs-on: ubuntu-26.04",
+      "    strategy:",
+      "      matrix:",
+      "        shell: [bash]",
+      ...jobDefaults,
+      "    steps:",
+      "      - uses: actions/setup-python@abc",
+      '        with: { python-version: "3.15" }',
+      "      - name: Run",
+      "        run: python3 x",
+      "",
+    ].join("\n");
+  const block = (value) => ["    defaults:", "      run:", `        shell:${value}`];
+  const nulls = ["", " ~", " null", " Null", " NULL", " # a comment"].map(block);
+  nulls.push(["    defaults: { run: { shell: } }"], ["    defaults: { run: { shell: ~ } }"], ["    defaults:", "      run: { shell: }"]);
+  const own = [" bash", " ''", ' ""'].map(block);
+  own.push(["    defaults: { run: { shell: '' } }"], ['    defaults: { run: { shell: "" } }'], ["    defaults:", "      run: { shell: '' }"]);
+  // `sudo python3 {0}` runs the step with Python through sudo, which may not keep the set-up PATH; an expression in the
+  // workflow's default cannot be read, so the step counts as running both runtimes (see `shellChoices`).
+  const cases = {
+    "sudo python3 {0}": ["x.yml > build > Run > python"],
+    "${{ matrix.shell }}": ["x.yml > build > Run > node", "x.yml > build > Run > python"],
+  };
+  for (const [shell, reported] of Object.entries(cases)) {
+    for (const jobDefaults of nulls) {
+      const jobs = readJobs(workflow(shell, jobDefaults));
+      assert.equal(jobs.build.jobShell, false, `${shell} / ${jobDefaults.join(" ")}`);
+      assert.deepEqual(unsetSteps("x.yml", jobs, {}), reported, `${shell} / ${jobDefaults.join(" ")}`);
+    }
+    for (const jobDefaults of own) {
+      const jobs = readJobs(workflow(shell, jobDefaults));
+      assert.equal(jobs.build.jobShell, true, `${shell} / ${jobDefaults.join(" ")}`);
+      assert.deepEqual(unsetSteps("x.yml", jobs, {}), [], `${shell} / ${jobDefaults.join(" ")}`);
+    }
+  }
 });
 
 // The workflows and composite actions in this repository (see `sources`), read once for every test below.
