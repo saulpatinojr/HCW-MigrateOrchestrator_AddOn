@@ -43,11 +43,14 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
   exceptions and each repository's own tests differ.
 - **Reaches this edition? Yes, as a test only.** No package, pin, lab behaviour or workflow changes; every workflow here
   passes the stricter check as it is. See the `CHANGELOG.md` entry for what the check now catches.
-- Copilot's review of these pull requests found six more ways past the check, and a review of those fixes one more (a
-  `sudo` inside a script `sudo` runs, a PATH replaced or removed for one command, the runner's interpreter named
-  directly, one-line `case` clauses, `${{ matrix.* }}` in the workflow-level `env:`, pipx under a step's `shell:`, and
-  free-threaded Python names such as `python3.14t`); the website fixed them first, and both copies carry the fixes in
-  their own pull requests, the line reader's part included.
+- Copilot's review of these pull requests found six more ways past the check, a review of those fixes one more, and
+  Copilot's second round six more (a `sudo` inside a script `sudo` runs, a PATH replaced, removed or cleared for one
+  command, the runner's interpreter named directly, one-line `case` clauses, `${{ matrix.* }}` in the workflow-level
+  `env:`, pipx under a step's `shell:`, free-threaded Python names such as `python3.14t`, a listed step under a sudo
+  `shell:`, and a `defaults:` written as a one-line mapping, which the line reader both copies use used to cut at its
+  first `}`); the website fixed them first
+  ([HCW-HybridCloudWorks#1723](https://github.com/saulpatinojr/HCW-HybridCloudWorks/pull/1723)), and both copies carry
+  the fixes in their own pull requests, the line reader's part included.
 - **Action here:** done in that pull request. When either copy changes again, change the other the same way: keep the
   logic identical to the website's and keep only the lists different.
 

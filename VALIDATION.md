@@ -18,7 +18,8 @@ worked out by GitHub, so that set-up step's version is unreadable). No workflow 
 ([HCW-HybridCloudWorks#1707](https://github.com/saulpatinojr/HCW-HybridCloudWorks/issues/1707))
 
 - **Environment:** Linux cloud session, Node 26.13.1 and npm 11.20.0.
-- **Executed:** `npm ci`; `npm test` — **232 pass, 0 fail**, 75 of them in this file. Equivalence with the website's
+- **Executed:** `npm ci`; `npm test` — **232 pass, 0 fail**, 75 of them in this file (at this pull request's first push;
+  after the fixes below, 246 passed and 89 in this file). Equivalence with the website's
   merged copy (from its `origin/main`, vitest taken out, read with its `yaml` library): the same answer on every input of
   the 12,975, 348 and 66,583 case sets used for round three (72,356 distinct inputs, including 116 whole workflows run
   through each copy's reader), on 886 more recorded from the website's and this file's tests, and on all 100 workflow
@@ -32,19 +33,24 @@ worked out by GitHub, so that set-up step's version is unreadable). No workflow 
 - **Known:** CodeQL (in `security.yml`) may flag the test input `'sudo env PATH="${PATH}" python3 x'` as a template
   string written in an ordinary string, because this file defines a `PATH` constant. The `${PATH}` is shell text the
   test feeds to the check on purpose, so the line stays as it is; it was flagged the same way on the website.
-- **After Copilot's review of the round-3 pull requests and a review of those fixes (2026-11-14):** the seven fixes the
-  website made first (`9281f4e8` for a `sudo` inside a script `sudo` runs, `e5ac25e6` for five more, `ab74c787` for `env
-  -u PATH`, `command -p` and free-threaded names, with a faster reading of long one-line `case` lines) are copied in,
-  and this copy's line reader `readJobs` applies the workflow-level rule (`workflowLevel`) where it folds the workflow's
-  `env:` into each job's. `npm test` — 243 passed, 0 failed, 86 of them in
+- **After Copilot's review of the round-3 pull requests, a review of those fixes and Copilot's second round
+  (2026-11-14):** the fixes the website made first (`9281f4e8` for a `sudo` inside a script `sudo` runs, `e5ac25e6` for
+  five more, `ab74c787` for `env -u PATH`, `command -p` and free-threaded names, with a faster reading of long one-line
+  `case` lines, `c2fdfc0d` and `1e85a206` for the second round; all merged in
+  [HCW-HybridCloudWorks#1723](https://github.com/saulpatinojr/HCW-HybridCloudWorks/pull/1723)) are copied in. This
+  copy's line reader `readJobs` applies the workflow-level rule (`workflowLevel`) where it folds the workflow's `env:`
+  into each job's, and reads a one-line mapping by the Python copies' rules (`flowEnd`, `flowMapping`; it used to cut
+  `defaults: {run: {shell: "python {0}"}}` at its first `}`). `npm test` — 246 passed, 0 failed, 89 of them in
   `tests/security/workflow-runtime-setup.test.mjs`; the new tests and changed cases, each added to the file as it was
-  before them, fail 8 of 83 for the first six fixes and 4 of 86 for the review's (its longer timing test among them).
-  Every function the change touches is the website's line for line (double quotes aside). The same answers as the
-  website's copy on the 37,692 generated cases of the reviews' forms, the 4,844 nested-sudo cases and the review's 348
-  inputs: 0 disagreements, for this copy and the App's; of the 348, one answer changes on purpose with the review's fix
-  (`pipx run --python python3.15t x` is no longer reported). With the `readJobs` line taken out, 72 of the 19,584
-  generated cases of the first six fixes disagree. On the workflows of all nine HCW repositories the findings are the
-  same before and after, and the same as the website's copy's.
+  before them, fail 8 of 83 for the first six fixes, 4 of 86 for the review's (its longer timing test among them) and 6
+  of 89 for Copilot's second round. Every function the change touches is the website's line for line (double quotes
+  aside). The same answers as the website's copy on the 49,200 generated cases of these changes, the 4,844 nested-sudo
+  cases and the 348 inputs of the round-three review: 0 disagreements, for this copy and the App's; of the 348, one
+  answer moved with the pre-PR review's fix and moved back with Copilot's second round (`pipx run --python python3.15t
+  x` is reported again). Before the reader change, this copy disagreed with the website on 11 of the 49,200 cases, every
+  one a one-line `defaults:`; with the `readJobs` line for the workflow level taken out, 72 of the 19,584 generated
+  cases of the first six fixes disagree. On the workflows of all nine HCW repositories the findings are the same before
+  and after, and the same as the website's copy's.
 
 ## The workflow runtime check is brought up to the website's round two (2026-11-13, HCW-HybridCloudWorks#1707)
 
