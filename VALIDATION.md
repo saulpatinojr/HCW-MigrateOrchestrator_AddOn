@@ -3,6 +3,35 @@
 Web-front edition (`saulpatinojr/HCW-MigrateOrchestrator_AddOn`, ADR-0028). Everything below distinguishes what was executed
 from what was not. Engine, rule and UI validation lives upstream in `saulpatinojr/HCW-MigrateOrchestrator_App/VALIDATION.md`.
 
+## The workflow runtime check gives a job with an empty shell the workflow's (2026-11-14, HCW-HybridCloudWorks#1707)
+
+What changed: `tests/security/workflow-runtime-setup.test.mjs` only, in this copy's own parts. An independent review
+after [#79](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/pull/79) found that a job whose
+`defaults: run: shell:` is empty (`shell:`, `~`, `null`) under a workflow-level `defaults.run.shell` got the shell `""`
+and `jobShell: true`, where the website's copy (`job.defaults.run.shell ?? defaults.run.shell`) falls back to the
+workflow's shell. `defaultShell` in the line reader now returns null for an empty value, and `scalar` reads a value
+that is only a comment (`shell: # x`) as empty, as YAML does. The line reader reads a quoted `''` as `""` too, so it
+cannot tell it from `shell:`; it falls back to the workflow's shell, where the website's copy keeps `''` as the job's
+own (the runner's default shell). That is the one known difference, kept on purpose: when the workflow's shell is one
+the check reports (sudo, an interpreter, an expression), this copy reports the step where the website's would not;
+with a plain workflow shell such as `bash` the two read the same. The runner treats an empty shell as unset
+([ScriptHandler.cs](https://raw.githubusercontent.com/actions/runner/main/src/Runner.Worker/Handlers/ScriptHandler.cs),
+`string.IsNullOrEmpty(shell)`), but whether GitHub merges a job's `''` over the workflow's default before the runner
+sees it is done on GitHub's side and was not checked. One new test of this copy's own.
+([HCW-HybridCloudWorks#1707](https://github.com/saulpatinojr/HCW-HybridCloudWorks/issues/1707))
+
+- **Environment:** Linux cloud session, Node 26.13.1.
+- **Executed:** the new test fails on `main` (`jobShell` true for `shell:` under `sudo python3 {0}`) and passes with
+  the change; `npm ci`; `npm test` — **257 pass, 0 fail**. Against the website's merged copy (`95b2aac5`, vitest
+  taken out, read with its `yaml` library) on 41 made-up workflows: `main` differed on the 13 empty-job-shell cases
+  (it reported nothing), this change agrees on all of them, and the only remaining differences are the two `''` and
+  `""` cases above (this copy reports, the website's does not) and one form both copies refuse with different
+  messages (a plain `${{ }}` inside a one-line mapping), as before. On the workflows and composite actions of every HCW
+  clone and worktree in this session (24 folders, 226 files), the reader's output and the findings are identical
+  before and after the change.
+- **Not executed:** the `build-test` job on GitHub (the pull request's own run is the check); actionlint, zizmor and
+  hadolint (no workflow or Dockerfile changed); `npm run e2e` (nothing here touches the pane or the API).
+
 ## The workflow runtime check is brought up to the website's round four (2026-11-14, HCW-HybridCloudWorks#1707)
 
 What changed: `tests/security/workflow-runtime-setup.test.mjs` only. Its checking logic and test cases are copied

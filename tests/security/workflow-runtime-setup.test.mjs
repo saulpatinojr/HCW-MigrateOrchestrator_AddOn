@@ -2381,7 +2381,8 @@ function scalar(value) {
     assert.ok(found, `a single-quoted value runs over more than one line: ${JSON.stringify(value)}`);
     [decoded, rest] = [found[1].replaceAll("''", "'"), text.slice(found[0].length)];
   } else {
-    const bare = text.replace(/\s+#.*$/, "").trim();
+    // A value that is only a comment (`shell: # x`, whose space the caller has already taken) is empty, as YAML reads it.
+    const bare = text.startsWith("#") ? "" : text.replace(/\s+#.*$/, "").trim();
     // An anchor (`&a`), an alias (`*a`) or a tag (`!!str`) is not text: refused, as the website's reader refuses it
     // (round 3 review, HCW-HybridCloudWorks#1707).
     assert.ok(!/^[&*!]/.test(bare), `an anchor, alias or tag: ${JSON.stringify(value)}`);
@@ -2728,19 +2729,27 @@ function stepKeys(lines, keyIndent) {
 
 /**
  * The `run: shell:` of the `defaults:` key on line `at` (at `indent` spaces), written as a block or `{ ... }`; null
- * when it names none.
+ * when it names none or is empty, so a job's empty one falls back to the workflow's, as the website's copy reads it
+ * (`job.defaults.run.shell ?? defaults.run.shell`, where `shell:`, `~` and `null` are null). This reader gives `""`
+ * for those and for a quoted `''` alike, so it cannot tell them apart; the website keeps a `''` as the job's own (the
+ * runner's default shell). Falling back is the safer reading of `''`: the runner treats an empty shell as unset
+ * (ScriptHandler.cs, `string.IsNullOrEmpty(shell)`), and when the workflow's shell is one the check reports (sudo, an
+ * interpreter, an expression) the step is reported rather than passed (#1707, after round 4).
  */
 function defaultShell(lines, at, indent) {
   const rest = withoutComment(lines[at].slice(lines[at].indexOf(":") + 1)).trim();
+  let shell;
   if (rest.startsWith("{")) {
     // Read as the nested one-line mapping it is (see `flowMapping`), so a quoted `{0}` or comma stays in its value.
     const run = flowMapping(rest).run;
-    return run !== null && typeof run === "object" ? (run.shell ?? null) : null;
+    shell = run !== null && typeof run === "object" ? run.shell : null;
+  } else {
+    const block = blockUnder(lines, at, indent);
+    const run = block.findIndex((line) => /^\s+run:/.test(line));
+    if (run === -1) return null;
+    shell = mappingAt(block, run, indentOf(block[run])).shell;
   }
-  const block = blockUnder(lines, at, indent);
-  const run = block.findIndex((line) => /^\s+run:/.test(line));
-  if (run === -1) return null;
-  return mappingAt(block, run, indentOf(block[run])).shell ?? null;
+  return shell === undefined || shell === null || shell === "" ? null : shell;
 }
 
 /**
@@ -6535,6 +6544,51 @@ test("the line reader keeps whether a job's shell is its own, so a matrix value 
   assert.equal(jobs.inherits.jobShell, false);
   assert.equal(jobs.own.jobShell, true);
   assert.deepEqual(unsetSteps("x.yml", jobs, {}), ["x.yml > inherits > Run > node", "x.yml > inherits > Run > python"]);
+});
+
+// A job whose `defaults: run: shell:` is empty (`shell:`, `~` or `null`, which YAML reads as null) has no shell of its
+// own, so the workflow's applies, as the website's copy reads it (`job.defaults.run.shell ?? defaults.run.shell`). This
+// line reader cannot tell `shell: ''` from `shell:`, so an empty quoted value falls back to the workflow's too (see
+// `defaultShell`). A job with a shell of its own still uses it (#1707, after round 4).
+test("the line reader gives a job with an empty shell the workflow's, and a job with its own shell keeps it", () => {
+  const workflow = (shell, jobDefaults) =>
+    [
+      "on: push",
+      "defaults:",
+      "  run:",
+      `    shell: ${shell}`,
+      "jobs:",
+      "  build:",
+      "    runs-on: ubuntu-26.04",
+      "    strategy:",
+      "      matrix:",
+      "        shell: [bash]",
+      ...jobDefaults,
+      "    steps:",
+      "      - uses: actions/setup-python@abc",
+      '        with: { python-version: "3.15" }',
+      "      - name: Run",
+      "        run: python3 x",
+      "",
+    ].join("\n");
+  const empties = ["", " ~", " null", " ''", ' ""', " # a comment"].map((value) => ["    defaults:", "      run:", `        shell:${value}`]);
+  empties.push(["    defaults: { run: { shell: } }"], ["    defaults: { run: { shell: ~ } }"], ["    defaults:", "      run: { shell: }"]);
+  // `sudo python3 {0}` runs the step with Python through sudo, which may not keep the set-up PATH; an expression in the
+  // workflow's default cannot be read, so the step counts as running both runtimes (see `shellChoices`).
+  const cases = {
+    "sudo python3 {0}": ["x.yml > build > Run > python"],
+    "${{ matrix.shell }}": ["x.yml > build > Run > node", "x.yml > build > Run > python"],
+  };
+  for (const [shell, reported] of Object.entries(cases)) {
+    for (const jobDefaults of empties) {
+      const jobs = readJobs(workflow(shell, jobDefaults));
+      assert.equal(jobs.build.jobShell, false, `${shell} / ${jobDefaults.join(" ")}`);
+      assert.deepEqual(unsetSteps("x.yml", jobs, {}), reported, `${shell} / ${jobDefaults.join(" ")}`);
+    }
+    const own = readJobs(workflow(shell, ["    defaults:", "      run:", "        shell: bash"]));
+    assert.equal(own.build.jobShell, true, shell);
+    assert.deepEqual(unsetSteps("x.yml", own, {}), [], shell);
+  }
 });
 
 // The workflows and composite actions in this repository (see `sources`), read once for every test below.
