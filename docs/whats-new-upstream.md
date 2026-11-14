@@ -30,6 +30,26 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
 
 ## Entries (newest first)
 
+### 2026-11-14: the workflow runtime check is refreshed to the website's round five, the last planned round (a shared test, not an upstream release)
+
+- `tests/security/workflow-runtime-setup.test.mjs`, the test that fails a workflow step that runs Node.js or Python
+  before its job has chosen the version, is shared with the upstream App. Both copies come from the website's
+  `scripts/workflow-runtime-setup.test.mjs`, which changed a fifth time in
+  [HCW-HybridCloudWorks#1726](https://github.com/saulpatinojr/HCW-HybridCloudWorks/pull/1726): a step whose `shell:` is
+  written but empty now uses the job's or the workflow's default shell, as GitHub's runner does (the Python copies
+  changed the same way in [HCW-NetworkEyes_App#405](https://github.com/saulpatinojr/HCW-NetworkEyes_App/pull/405)). This
+  edition's copy is brought up to that round in the same pull request as this entry; the App's copy moves in
+  [HCW-MigrateOrchestrator_App#125](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/125), opened
+  alongside this one.
+- **The last planned round.** The owner decided on 2026-11-14 that round five is the last planned round. After it, this
+  check changes only when (1) a real HCW workflow trips it or would get past it, or (2) a reviewer shows a way past it
+  that a workflow could plausibly be written with. Any other edge case a reviewer raises is added to the known-limits
+  list in the test file's header, not to a new round.
+- **Reaches this edition? Yes, as a test only.** No package, pin, lab behaviour or workflow changes; every workflow here
+  passes the stricter check as it is. See the `CHANGELOG.md` entry for what the check now catches.
+- **Action here:** done in that pull request. When either copy changes again, change the other the same way: keep the
+  logic identical to the website's and keep only the lists different.
+
 ### 2026-11-14: the workflow runtime check is refreshed to the website's round four (a shared test, not an upstream release)
 
 - `tests/security/workflow-runtime-setup.test.mjs`, the test that fails a workflow step that runs Node.js or Python
