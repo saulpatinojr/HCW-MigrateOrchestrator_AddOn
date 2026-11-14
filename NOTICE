@@ -1,8 +1,9 @@
 Hybrid Cloud Works Migration Explorer (web-front edition of the Azure Migration Orchestrator)
 Copyright (c) 2026 Hybrid Cloud Works. Licensed under MIT (see LICENSE).
 
-License: MIT, decided in HCW-MigrateOrchestrator_App's docs/adr/ADR-0016-mit-license.md (accepted 2026-10-03) and
-confirmed as final by the owner on 2026-11-14. The upstream product, HCW-MigrateOrchestrator_App, uses the same licence.
+License: MIT, decided in HCW-MigrateOrchestrator_App's docs/adr/ADR-0016-mit-license.md (accepted 2026-10-03). On
+2026-11-14 the owner asked for this NOTICE to state it without the earlier "may replace the license before publication"
+caveat. The upstream product, HCW-MigrateOrchestrator_App, uses the same licence.
 
 Upstream packages: this edition consumes the App's released packages, @hybridcloudworks/migration-core and
 @hybridcloudworks/migration-ui. package.json pins both by URL to the tarballs attached to the App's GitHub Release, and
