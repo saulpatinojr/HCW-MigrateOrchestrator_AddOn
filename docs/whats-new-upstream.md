@@ -30,6 +30,20 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
 
 ## Entries (newest first)
 
+### 2026-11-14: the sample export moves to the HCW naming convention (sample data, not an upstream release)
+
+- The owner decided on 2026-11-14 that the MigrateOrchestrator sample data uses the convention of the other HCW
+  repositories: subscription id `00000000-0000-0000-0000-000000000001` and `hcw-sample-*` names (`hcwsamplest*` and
+  `hcwsampleacr*` where Azure forbids hyphens). The App changes its sample export, its golden reports and its tests in
+  [HCW-MigrateOrchestrator_App#126](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/126); the name mapping table and the golden-file comparison are there.
+- **Reaches this edition? Not through a release.** The published tarballs do not contain `samples/`
+  (`scripts/assemble-packages.mjs` packs `dist`, the rules, a README and the licence only), so no package or pin changes. This
+  edition keeps its own copy of `samples/resources-csv/sample-resources.csv` (the pane's sample download and the input of
+  the lab API tests and the browser suite), and it is replaced with the App's new copy in the same pull request as this
+  entry, with the two tests that named the old storage account, VM and subscription id.
+- **Action here:** done in that pull request. If the App's sample export changes again, copy it here the same way and
+  run `npm test` and `npm run e2e`.
+
 ### 2026-11-14: the workflow runtime check is refreshed to the website's round five, the last planned round (a shared test, not an upstream release)
 
 - `tests/security/workflow-runtime-setup.test.mjs`, the test that fails a workflow step that runs Node.js or Python

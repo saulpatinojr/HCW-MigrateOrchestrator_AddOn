@@ -29,7 +29,7 @@ test("journey through the pane: upload → questionnaire → results → detail 
   await page.goto(PANE + "/");
   await uploadAndRun(page);
   await expect(page.getByText("Need validation")).toBeVisible();
-  await page.getByRole("row", { name: /stcontosobillingprod/ }).click();
+  await page.getByRole("row", { name: /hcwsamplestbilling/ }).click();
   await expect(page.getByRole("dialog")).toContainText("azure-storage-mover");
   await page.getByRole("button", { name: "Close" }).click();
   await page.getByRole("tab", { name: "terraform/state-impact/README.md" }).click();
@@ -49,7 +49,7 @@ test("framed by the host page, the pane reports exactly loading → ready → wo
   await uploadAndRun(pane);
   await expect.poll(() => page.evaluate(() => (window as unknown as { __hcwAddonMessages: Array<{ state: string }> }).__hcwAddonMessages.map((m) => m.state))).toEqual(["loading", "ready", "working", "ready"]);
   // Re-renders after the run (opening a detail dialog) emit nothing.
-  await pane.getByRole("row", { name: /stcontosobillingprod/ }).click();
+  await pane.getByRole("row", { name: /hcwsamplestbilling/ }).click();
   await expect(pane.getByRole("dialog")).toBeVisible();
   await pane.getByRole("button", { name: "Close" }).click();
   expect(await page.evaluate(() => (window as unknown as { __hcwAddonMessages: unknown[] }).__hcwAddonMessages.length)).toBe(4);

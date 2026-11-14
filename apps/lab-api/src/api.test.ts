@@ -133,8 +133,8 @@ test("rules coverage is public; stats are opt-in and contain aggregates only", a
     assert.equal(st.assessments, 1);
     assert.ok(st.topResourceTypes.length > 5);
     assert.ok(st.typesWithoutRule.some((t) => t.key === "microsoft.quantum/workspaces"));
-    assert.ok(!JSON.stringify(st).includes("00000000-0000-4000-8000-000000000001"), "no subscription IDs in stats");
-    assert.ok(!JSON.stringify(st).includes("vm-billing-01"), "no resource names in stats");
+    assert.ok(!JSON.stringify(st).includes("00000000-0000-0000-0000-000000000001"), "no subscription IDs in stats");
+    assert.ok(!/hcw-?sample/.test(JSON.stringify(st)), "no resource names in stats");
   } finally { s5.close(); }
 });
 
