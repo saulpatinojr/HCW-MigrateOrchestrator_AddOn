@@ -1,5 +1,27 @@
-Azure Migration Orchestrator / Hybrid Cloud Works Migration Explorer
-Copyright (c) 2026 Hybrid Cloud Works. Licensed under MIT (see LICENSE); the owner may replace the license before publication (ADR-0016).
+Hybrid Cloud Works Migration Explorer (web-front edition of the Azure Migration Orchestrator)
+Copyright (c) 2026 Hybrid Cloud Works. Licensed under MIT (see LICENSE).
 
-Migration support rules under rules/azure are derived from public Microsoft Learn documentation, cited per rule with retrieval dates. Microsoft, Azure, Entra and related marks are trademarks of Microsoft Corporation. This project is not affiliated with or endorsed by Microsoft. Generated Terraform, scripts and runbooks are illustrative and not production-approved.
-The .github/ GitHub Copilot Code Reviewer pack is the owner's own prior work (docs/governance/).
+License: MIT, decided in HCW-MigrateOrchestrator_App's docs/adr/ADR-0016-mit-license.md (accepted 2026-10-03). On
+2026-11-14 the owner asked for this NOTICE to state it without the earlier "may replace the license before publication"
+caveat. The upstream product, HCW-MigrateOrchestrator_App, uses the same licence.
+
+Upstream packages: this edition consumes the App's released packages, @hybridcloudworks/migration-core and
+@hybridcloudworks/migration-ui. package.json pins both by URL to the tarballs attached to the App's GitHub Release, and
+package-lock.json carries their integrity hashes. Both declare MIT, the same licence as this repository; no engine, rule
+or UI component source is kept here.
+  Source: https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App (packages/, rules/).
+
+Lab image: the image built from infrastructure/docker/Dockerfile.lab and published by publish-images.yml as
+docker.io/hybridcloudworks/img-mo-lab-addon includes both packages, and its label org.opencontainers.image.licenses
+says "MIT". The base image, Node.js and the other installed packages keep their own licences.
+
+Migration support rules arrive inside @hybridcloudworks/migration-core (its rules/azure folder) and are derived from
+public Microsoft Learn documentation, cited per rule with retrieval dates. Microsoft, Azure, Entra and related marks are
+trademarks of Microsoft Corporation. This project is not affiliated with or endorsed by Microsoft. Generated Terraform,
+scripts and runbooks are illustrative and not production-approved.
+
+The pane's theme tokens (apps/lab-web/src/styles.css) are copied from the hybridcloudworks.com website repository
+(HCW-HybridCloudWorks, frontend/src/index.css), read on 2026-10-10. The pane does not load the site's fonts.
+
+The .github/ GitHub Copilot Code Reviewer pack is the owner's own prior work; its validation report is in
+HCW-MigrateOrchestrator_App (docs/governance/).
