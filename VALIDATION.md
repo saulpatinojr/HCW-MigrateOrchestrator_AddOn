@@ -3,6 +3,19 @@
 Web-front edition (`saulpatinojr/HCW-MigrateOrchestrator_AddOn`, ADR-0028). Everything below distinguishes what was executed
 from what was not. Engine, rule and UI validation lives upstream in `saulpatinojr/HCW-MigrateOrchestrator_App/VALIDATION.md`.
 
+## The sample export on the HCW naming convention (2026-11-14, owner decision)
+
+What changed: `samples/resources-csv/sample-resources.csv` (names and the subscription id only; byte for byte the App's
+copy in [HCW-MigrateOrchestrator_App#126](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/126)), `apps/lab-api/src/api.test.ts` (the stats privacy check looks for the new id and any
+`hcw-sample`/`hcwsample` name instead of `vm-billing-01`), `tests/e2e/lab.spec.ts` (the storage account row is clicked by
+`hcwsamplestbillingprod`), and the notes in `CHANGELOG.md` and `docs/whats-new-upstream.md`.
+
+- **Executed (Linux sandbox, Node 26.13.1):** `npm ci`; `npm test` — 262 passed, 0 failed; `npm run e2e` (build, then
+  `npx playwright test`) — **5 passed** on Chromium headless shell 156 (`npx playwright install chromium` fetched the
+  browser first); `npm run typecheck` — passed.
+- **Not executed:** the workflows themselves on GitHub (they run on the pull request); actionlint, zizmor and hadolint
+  (no workflow or Dockerfile changed).
+
 ## The workflow runtime check is brought up to the website's round five, the last planned round (2026-11-14, HCW-HybridCloudWorks#1707)
 
 What changed: `tests/security/workflow-runtime-setup.test.mjs` only. Its checking logic and test cases are copied
