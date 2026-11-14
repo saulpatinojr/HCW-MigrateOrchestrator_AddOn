@@ -3,6 +3,33 @@
 Web-front edition (`saulpatinojr/HCW-MigrateOrchestrator_AddOn`, ADR-0028). Everything below distinguishes what was executed
 from what was not. Engine, rule and UI validation lives upstream in `saulpatinojr/HCW-MigrateOrchestrator_App/VALIDATION.md`.
 
+## The workflow runtime check is brought up to the website's round four (2026-11-14, HCW-HybridCloudWorks#1707)
+
+What changed: `tests/security/workflow-runtime-setup.test.mjs` only. Its checking logic and test cases are copied
+unchanged from the website's `scripts/workflow-runtime-setup.test.mjs` as merged in
+[HCW-HybridCloudWorks#1725](https://github.com/saulpatinojr/HCW-HybridCloudWorks/pull/1725) (`95b2aac5`; single quotes written as double quotes, `expect` written as `assert`, `REPO` as `ROOT`).
+This copy's own parts change in three places. The written-in Python floor moves from 3.15.0 to 3.15.2, and one of
+its own tests changes its expected answer with it, as its Python twin did (`3.15.0` is now below the floor). The
+line reader `readJobs`, which folds the workflow's `defaults.run.shell` into each job, now keeps whether a job's
+shell is its own (`jobShell`, the Python copies' `job_shell` from
+[HCW-NetworkEyes_App#403](https://github.com/saulpatinojr/HCW-NetworkEyes_App/pull/403)), and `shellChoices` reads it: the website's YAML library keeps the
+two levels apart, so its `shellChoices` tells them apart without it, and GitHub fills a `${{ matrix.X }}` in only in
+a job's own default. One new test of this copy's own checks that flag. No workflow changed.
+([HCW-HybridCloudWorks#1707](https://github.com/saulpatinojr/HCW-HybridCloudWorks/issues/1707))
+
+- **Environment:** Linux cloud session, Node 26.13.1.
+- **Executed:** `npm ci`; `npm test` — **256 pass, 0 fail**, 99 of them in this file (89 before). Every function
+  the change touches is the website's line for line (double quotes aside), except the one `jobShell` clause in
+  `shellChoices`. Equivalence with the website's merged copy (`95b2aac5`, vitest taken out, read with its `yaml`
+  library): the same answer on all 60,632 generated cases of round four and its review rounds, made-up workflows run
+  through each copy's reader included: 0 disagreements. On the workflows of every HCW clone in this session
+  (23 folders), the findings are the same as the website's copy's and the same as this copy's before round four.
+  A workflow-level `defaults.run.shell` of `${{ matrix.shell }}` over a job whose matrix lists `shell: [bash]` is
+  reported for Node.js and Python by the website's copy, the canonical Python copy and this one; with the
+  `jobShell` clause taken out, this copy reported nothing for it.
+- **Not executed:** the `build-test` job on GitHub (the pull request's own run is the check); actionlint, zizmor and
+  hadolint (no workflow or Dockerfile changed); `npm run e2e` (nothing here touches the pane or the API).
+
 ## The workflow runtime check is brought up to the website's round three (2026-11-14, HCW-HybridCloudWorks#1707)
 
 What changed: `tests/security/workflow-runtime-setup.test.mjs` only. Its checking logic and test cases are copied
