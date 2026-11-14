@@ -3,6 +3,21 @@
 Web-front edition (`saulpatinojr/HCW-MigrateOrchestrator_AddOn`, ADR-0028). Everything below distinguishes what was executed
 from what was not. Engine, rule and UI validation lives upstream in `saulpatinojr/HCW-MigrateOrchestrator_App/VALIDATION.md`.
 
+## The workflow runtime check is brought up to the website's round five, the last planned round (2026-11-14, HCW-HybridCloudWorks#1707)
+
+What changed: `tests/security/workflow-runtime-setup.test.mjs` only. Its checking logic and test cases are copied
+unchanged from the website's `scripts/workflow-runtime-setup.test.mjs` as merged in
+[HCW-HybridCloudWorks#1726](https://github.com/saulpatinojr/HCW-HybridCloudWorks/pull/1726) (`5a7e7f4a`; single quotes
+written as double quotes, `expect` written as `assert`): `ownShell` in `givenShell` and `shellChoices`, five new tests,
+and the header's round-five paragraph, the owner's stop rule and the relabelled known-limits list. This copy's own parts
+(the lists, the floors, the line reader, the paths) do not change: its `stepKeys` already reads a null, empty or
+comment-only step `shell:` as '', and its reader already gives a job with a null `defaults.run.shell` the workflow's. No
+workflow changed. ([HCW-HybridCloudWorks#1707](https://github.com/saulpatinojr/HCW-HybridCloudWorks/issues/1707))
+
+- **Environment:** Linux cloud session, Node 26.13.1, from `main` at `a0ec540`.
+- **Executed:** `npm ci`; `npm test` — **262 pass, 0 fail**, 105 of them in this file (100 before). Parsed with acorn and compared declaration by declaration with the website's merged copy (quote style ignored, `expect` read as `assert`): `ownShell`, `givenShell` and the round-five tests are identical, and the declarations that differ are the same 30 as before this change. Equivalence with the website's copy (read with its `yaml` library): the same answer on all 94,952 generated cases of round five and the rounds before it, made-up workflows run through each copy's own reader included: 0 disagreements (10,000 before this change). On the 386 workflow and composite-action files of every HCW clone and worktree in this session, the findings are the same as the website's copy's, file by file.
+- **Not executed:** the `build-test` job on GitHub (the pull request's own run is the check); actionlint, zizmor and hadolint (no workflow or Dockerfile changed); `npm run e2e` and `npm run typecheck` (nothing here touches the pane, the API or typed code).
+
 ## The workflow runtime check gives a job with an empty shell the workflow's (2026-11-14, HCW-HybridCloudWorks#1707)
 
 What changed: `tests/security/workflow-runtime-setup.test.mjs` only, in this copy's own parts. An independent review
