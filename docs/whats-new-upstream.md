@@ -30,6 +30,22 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
 
 ## Entries (newest first)
 
+### 2026-11-14: the workflow runtime check is refreshed to the website's round three (a shared test, not an upstream release)
+
+- `tests/security/workflow-runtime-setup.test.mjs`, the test that fails a workflow step that runs Node.js or Python
+  before its job has chosen the version, is shared with the upstream App. Both copies come from the website's
+  `scripts/workflow-runtime-setup.test.mjs`, which changed a third time in
+  [HCW-HybridCloudWorks#1722](https://github.com/saulpatinojr/HCW-HybridCloudWorks/pull/1722); the line reader both
+  copies use comes from the Python copies' third round
+  ([HCW-NetworkEyes_App#399](https://github.com/saulpatinojr/HCW-NetworkEyes_App/pull/399)). This edition's copy was
+  brought up to that round in its own pull request, and the App (`HCW-MigrateOrchestrator_App`) gets the same change in
+  its own pull request: the logic, the reader and the test cases are the same in both, and only the lists of allowed
+  exceptions and each repository's own tests differ.
+- **Reaches this edition? Yes, as a test only.** No package, pin, lab behaviour or workflow changes; every workflow here
+  passes the stricter check as it is. See the `CHANGELOG.md` entry for what the check now catches.
+- **Action here:** done in that pull request. When either copy changes again, change the other the same way: keep the
+  logic identical to the website's and keep only the lists different.
+
 ### 2026-11-13: the workflow runtime check is refreshed to the website's round two (a shared test, not an upstream release)
 
 - `tests/security/workflow-runtime-setup.test.mjs`, the test that fails a workflow step that runs Node.js or Python
