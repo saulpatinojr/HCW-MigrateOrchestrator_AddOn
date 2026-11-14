@@ -9,16 +9,16 @@ Read it before you change behaviour, bump the upstream pin or review a `core-upd
 upstream, whether it reaches this edition, and what to run. Add an entry when a change lands upstream that reaches this
 edition (the upstream `CLAUDE.md` asks for the same), newest first, and keep the table below true.
 
-## Current upstream state (checked 2026-10-27)
+## Current upstream state (checked 2026-10-27; the first and sixth rows re-read 2026-11-14)
 
 | Question | Answer |
 |---|---|
-| Upstream `main` | `b9fc763` (merge of upstream pull request #100, the `v0.4.1` release preparation); it is the `v0.4.1` tag commit. Upstream pull request #101, which changes only documents and one Terraform comment (none of it in the tarballs), was open when this was written |
+| Upstream `main` | `7ea7612` on 2026-11-14 (merge of upstream pull request [#123](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/123), round four of the workflow runtime check), 51 commits after the `v0.4.1` tag commit `b9fc763` |
 | Latest upstream release | `v0.4.1`, published 2026-10-27, tag commit `b9fc763` (annotated tag) |
 | What this edition pins | `v0.4.1` (adopted by [pull request 54](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/pull/54), merged 2026-10-27): `migration-core` and `migration-ui` as release tarballs, by URL in `package.json` and by integrity hash in `package-lock.json` |
 | Drift between pin and latest release | None |
 | Do the pinned hashes match the published assets? | Yes. The two `v0.4.1` tarballs were downloaded on 2026-10-27 and their SHA-512 values equal the `integrity` entries in `package-lock.json` (`sha512-hKnjvlbs…` for core, `sha512-MQxLdcd2…` for ui) |
-| Unreleased upstream changes that touch the tarballs | None. Upstream `main` is the `v0.4.1` tag commit |
+| Unreleased upstream changes that touch the tarballs | None found on 2026-11-14. GitHub's compare of `v0.4.1` with `main` lists 40 changed files, none under `packages/`, none in the four `rules/` folders the core tarball ships (only `rules/reports/` changed) and not `scripts/assemble-packages.mjs`; the root `package.json` changed only a development dependency (`@types/node`). The rest is workflows, tests, documents, the appliance and its infrastructure |
 | Tags | Upstream has an active ruleset, "Protect release tags", on `v*` tags. It blocks creating, updating and deleting them except for a repository role that can bypass it (the owner's `v0.4.1` tag push reported "Bypassed rule violations"). Before 2026-10-24 the `v0.3.1` tag had been moved once; that release is no longer pinned. The `integrity` hashes in `package-lock.json` would catch a changed file under a pinned tag |
 
 Dates in this file are in US Central time; GitHub shows UTC, so a release can appear a day later there.
@@ -39,8 +39,12 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
   as able to run either runtime, and holds Python to 3.15.2. The line reader both copies use now keeps whether a
   job's `shell:` is its own, as the Python copies' reader does ([HCW-NetworkEyes_App#403](https://github.com/saulpatinojr/HCW-NetworkEyes_App/pull/403)).
   This edition's copy is brought up to that round in the same pull request as this entry. The App's copy
-  (`HCW-MigrateOrchestrator_App`) is not yet at round four and needs the same change in its own pull request,
-  which was not open when this was written.
+  (`HCW-MigrateOrchestrator_App`) reached round four in
+  [HCW-MigrateOrchestrator_App#123](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/123), merged on
+  2026-11-14. It also carries this edition's later fix for a job whose `shell:` is empty
+  ([pull request 80](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/pull/80)): compared on 2026-11-14,
+  the two copies differ only in their header comment and in their lists of allowed exceptions with the comments above
+  them.
 - **Reaches this edition? Yes, as a test only.** No package, pin, lab behaviour or workflow changes; every workflow here
   passes the stricter check as it is. See the `CHANGELOG.md` entry for what the check now catches.
 - **Action here:** done in that pull request. When either copy changes again, change the other the same way: keep the
