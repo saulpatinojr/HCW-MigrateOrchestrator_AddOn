@@ -43,6 +43,10 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
   exceptions and each repository's own tests differ.
 - **Reaches this edition? Yes, as a test only.** No package, pin, lab behaviour or workflow changes; every workflow here
   passes the stricter check as it is. See the `CHANGELOG.md` entry for what the check now catches.
+- Copilot's review of these pull requests found six more ways past the check (a `sudo` inside a script `sudo` runs, a
+  PATH replaced for one command, the runner's interpreter named directly, one-line `case` clauses, `${{ matrix.* }}` in
+  the workflow-level `env:`, and pipx under a step's `shell:`); the website fixed them first, and both copies carry the
+  fixes in their own pull requests, the line reader's part included.
 - **Action here:** done in that pull request. When either copy changes again, change the other the same way: keep the
   logic identical to the website's and keep only the lists different.
 

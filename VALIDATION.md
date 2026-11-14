@@ -32,6 +32,15 @@ worked out by GitHub, so that set-up step's version is unreadable). No workflow 
 - **Known:** CodeQL (in `security.yml`) may flag the test input `'sudo env PATH="${PATH}" python3 x'` as a template
   string written in an ordinary string, because this file defines a `PATH` constant. The `${PATH}` is shell text the
   test feeds to the check on purpose, so the line stays as it is; it was flagged the same way on the website.
+- **After Copilot's review of the round-3 pull requests (2026-11-14):** the six fixes the website made first (`9281f4e8`
+  for a `sudo` inside a script `sudo` runs, `e5ac25e6` for the other five) are copied in, and this copy's line reader
+  `readJobs` applies the workflow-level rule (`workflowLevel`) where it folds the workflow's `env:` into each job's.
+  `npm test` — 240 passed, 0 failed, 83 of them in `tests/security/workflow-runtime-setup.test.mjs`; the new tests and
+  the one changed case, added to the file as it was before, fail 8 of its 83 tests. Every function the change touches is
+  the website's line for line (double quotes aside). The same answers as the website's copy on the 19,584 generated
+  cases of the review's forms, the 4,844 nested-sudo cases and the review's 348 inputs: 0 disagreements, for this copy
+  and the App's; with the `readJobs` line taken out, 72 of the generated workflows disagree. On the workflows of all
+  nine HCW repositories the findings are the same before and after, and the same as the website's copy's.
 
 ## The workflow runtime check is brought up to the website's round two (2026-11-13, HCW-HybridCloudWorks#1707)
 
