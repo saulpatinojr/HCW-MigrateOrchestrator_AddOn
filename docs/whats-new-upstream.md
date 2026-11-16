@@ -30,6 +30,25 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
 
 ## Entries (newest first)
 
+### 2026-11-16: ten move-support rules corrected against Microsoft Learn (reaches this edition at the next upstream release)
+
+- The App's weekly Learn report ([HCW-MigrateOrchestrator_App#130](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/130))
+  said the rules and Learn agreed, but it had read no rows from Learn: the Learn page puts its tables inside quote blocks
+  and the App's parser skips those lines. The comparison was run by hand against the live page
+  ([Azure resource types for move operations](https://learn.microsoft.com/azure/azure-resource-manager/management/move-support-resources)),
+  and the App changes ten rules in `rules/azure` in [HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131): metric alerts,
+  user-assigned managed identities, NAT gateways and application gateways become "unsupported" for resource group and
+  subscription moves (recreate instead); private endpoints, load balancers (subscription), public IP addresses
+  (subscription) and snapshots become "conditional"; VM extensions become "unsupported" for a region move; Azure SQL
+  databases become "conditional" for a region move. Each is `ruleVersion` 1.1.0; the rules snapshot becomes 1.1.35.
+- **Reaches this edition? Yes, at the next upstream release.** The core tarball ships `rules/azure` and
+  `rules/snapshots` (`scripts/assemble-packages.mjs`), so the `core-update` pull request for that release brings the new
+  rules. Nothing in this repository names these rules or the snapshot version (searched 2026-11-16), so no test here is
+  expected to change, but an assessment a visitor runs in the pane will show the new support states, reason codes and
+  sources for those resource types.
+- **Action here:** none until the release. When the `core-update` pull request arrives, run `npm ci`, `npm test` and
+  `npm run e2e`, and check that the pane shows snapshot 1.1.35 or later.
+
 ### 2026-11-14: the sample export moves to the HCW naming convention (sample data, not an upstream release)
 
 - The owner decided on 2026-11-14 that the MigrateOrchestrator sample data uses the convention of the other HCW
