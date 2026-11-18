@@ -18,7 +18,7 @@ edition (the upstream `CLAUDE.md` asks for the same), newest first, and keep the
 | What this edition pins | `v0.4.1` (adopted by [pull request 54](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/pull/54), merged 2026-10-27): `migration-core` and `migration-ui` as release tarballs, by URL in `package.json` and by integrity hash in `package-lock.json` |
 | Drift between pin and latest release | None |
 | Do the pinned hashes match the published assets? | Yes. The two `v0.4.1` tarballs were downloaded on 2026-10-27 and their SHA-512 values equal the `integrity` entries in `package-lock.json` (`sha512-hKnjvlbs…` for core, `sha512-MQxLdcd2…` for ui) |
-| Unreleased upstream changes that touch the tarballs | None found on 2026-11-14. GitHub's compare of `v0.4.1` with `main` lists 40 changed files, none under `packages/`, none in the four `rules/` folders the core tarball ships (only `rules/reports/` changed) and not `scripts/assemble-packages.mjs`; the root `package.json` changed only a development dependency (`@types/node`). The rest is workflows, tests, documents, the appliance and its infrastructure |
+| Unreleased upstream changes that touch the tarballs | None found on 2026-11-14. GitHub's compare of `v0.4.1` with `main` lists 40 changed files, none under `packages/`, none in the four `rules/` folders the core tarball ships (only `rules/reports/` changed) and not `scripts/assemble-packages.mjs`; the root `package.json` changed only a development dependency (`@types/node`). The rest is workflows, tests, documents, the appliance and its infrastructure. **Pending (2026-11-18):** the App branch `claude/learn-matrix-quoted-tables` (its pull request is not open yet) changes `packages/evidence-engine` (the Learn parser; see the 2026-11-18 entry); once it merges, the next release changes the core tarball |
 | Tags | Upstream has an active ruleset, "Protect release tags", on `v*` tags. It blocks creating, updating and deleting them except for a repository role that can bypass it (the owner's `v0.4.1` tag push reported "Bypassed rule violations"). Before 2026-10-24 the `v0.3.1` tag had been moved once; that release is no longer pinned. The `integrity` hashes in `package-lock.json` would catch a changed file under a pinned tag |
 
 Dates in this file are in US Central time; GitHub shows UTC, so a release can appear a day later there.
@@ -29,6 +29,25 @@ only the rule-diff report files `rules/reports/learn-diff.json` and `rules/repor
 The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of both `package.json` files and, in `migration-ui`, the exact `migration-core` version it depends on (107 files in core and 30 in ui, in both releases). Upstream CI on `main` at `b9fc763` passed (the `ci`, `security` and `scanners` runs).
 
 ## Entries (newest first)
+
+### 2026-11-18: the Learn move-support parser reads the live page (unreleased upstream change to `migration-core`)
+
+- Upstream's weekly rules check compares the rules with Microsoft Learn's
+  [move-support page](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/move-support-resources).
+  Since 2026-10-19 its parser had read 0 rows from that page, because the page's tables sit inside quote blocks (each line
+  starts with `> `), so every weekly report said "0 disagreements". The fix is in
+  the App branch `claude/learn-matrix-quoted-tables` (its pull request is not open yet): quoted lines are read, HTML comments are skipped, a type listed twice uses its first row,
+  lower-case provider headings match, and a plain "Yes" under a note that links move guidance reads as `conditional`.
+  No rule changed.
+- **Reaches this edition? Only with the next upstream release, and only as types.** `parseLearnMoveSupport` and
+  `diffRulesAgainstMatrix` are exported from `@hybridcloudworks/migration-core/evidence-engine`. In that release
+  `LearnMatrixRow` gains the optional fields `tableInSection` and `guidance`, `MatrixDiff` gains the optional
+  `learnGuidance`, a new function `learnLinkToUrl` is exported, and both functions return different results for the live
+  page. This edition imports only `loadRules`
+  and `defaultRulesDir` from that subpath (`apps/lab-api/src/app.ts`), so nothing here calls the changed functions. The
+  rules the core tarball ships are unchanged.
+- **Action here:** none now. When `core-update` proposes the release that carries this, run `npm ci` and `npm test` as
+  for any release.
 
 ### 2026-11-14: the sample export moves to the HCW naming convention (sample data, not an upstream release)
 
