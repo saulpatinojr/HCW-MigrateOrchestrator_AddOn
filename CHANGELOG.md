@@ -5,6 +5,8 @@ The engine, rules, CLI and UI components are versioned and released upstream in 
 
 ## Unreleased
 
+- **`docs/whats-new-upstream.md` notes the upstream Learn parser fix** ([HCW-MigrateOrchestrator_App#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133)). The parser had read 0 rows from the live Learn page; the fix changes `migration-core`'s `evidence-engine` exports (new optional fields, a new `learnLinkToUrl`), which this edition does not call. Nothing changes here until the `core-update` pull request for the next release. Documentation only.
+
 - **`docs/whats-new-upstream.md` notes ten upstream move-support rule fixes** ([HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131), from the weekly Learn report in [#130](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/130)). They reach this edition with the next upstream release; nothing changes here until the `core-update` pull request for it. Documentation only.
 - **`@claude` mentions now run on Opus** (owner decision 2026-11-19). `.github/workflows/claude.yml` passes `--model claude-opus-5-5` to Claude Code through the action's `claude_args` input (the action has no `model` input of its own). Before this, runs used the Claude Code default model for the owner's plan. Opus gives stronger answers on hard tasks and uses the subscription's limits faster; removing the line goes back to the default.
 
