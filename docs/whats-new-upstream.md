@@ -18,7 +18,7 @@ edition (the upstream `CLAUDE.md` asks for the same), newest first, and keep the
 | What this edition pins | `v0.4.1` (adopted by [pull request 54](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/pull/54), merged 2026-10-27): `migration-core` and `migration-ui` as release tarballs, by URL in `package.json` and by integrity hash in `package-lock.json` |
 | Drift between pin and latest release | None |
 | Do the pinned hashes match the published assets? | Yes. The two `v0.4.1` tarballs were downloaded on 2026-10-27 and their SHA-512 values equal the `integrity` entries in `package-lock.json` (`sha512-hKnjvlbs…` for core, `sha512-MQxLdcd2…` for ui) |
-| Unreleased upstream changes that touch the tarballs | Two, read 2026-11-21. **On `main`:** `scripts/assemble-packages.mjs` now copies the root `LICENSE` into both tarballs and lists it in their `files` (upstream [#124](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/124), merged 2026-11-14); no code changes. **Open:** [HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131) changes ten rules in `rules/azure` and `rules/snapshots`, which the core tarball ships (entry below). GitHub's compare of `v0.4.1` with `main` lists 60 changed files; the others under `packages/` are tests, which the tarballs do not ship, and the root `package.json` changed only a development dependency (`@types/node`) |
+| Unreleased upstream changes that touch the tarballs | Two, read 2026-11-21. **On `main`:** `scripts/assemble-packages.mjs` now copies the root `LICENSE` into both tarballs and lists it in their `files` (upstream [#124](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/124), merged 2026-11-14); no code changes. **Open:** [HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131) changes ten rules in `rules/azure` and `rules/snapshots`, which the core tarball ships (entry below). GitHub's compare of `v0.4.1` with `main` lists 60 changed files; the others under `packages/` are tests, which the tarballs do not ship, and the root `package.json` changed only a development dependency (`@types/node`). **Also on `main` since 2026-11-22:** [HCW-MigrateOrchestrator_App#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133) (merge `c24d726`) changes `packages/evidence-engine`, the Learn parser (see the 2026-11-18 entry), so the next release changes the core tarball again. **Pending (2026-11-22):** [HCW-MigrateOrchestrator_App#136](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/136) changes four rules (see the 2026-11-22 entry) |
 | Tags | Upstream has an active ruleset, "Protect release tags", on `v*` tags. It blocks creating, updating and deleting them except for a repository role that can bypass it (the owner's `v0.4.1` tag push reported "Bypassed rule violations"). Before 2026-10-24 the `v0.3.1` tag had been moved once; that release is no longer pinned. The `integrity` hashes in `package-lock.json` would catch a changed file under a pinned tag |
 
 Dates in this file are in US Central time; GitHub shows UTC, so a release can appear a day later there.
@@ -29,6 +29,43 @@ only the rule-diff report files `rules/reports/learn-diff.json` and `rules/repor
 The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of both `package.json` files and, in `migration-ui`, the exact `migration-core` version it depends on (107 files in core and 30 in ui, in both releases). Upstream CI on `main` at `b9fc763` passed (the `ci`, `security` and `scanners` runs).
 
 ## Entries (newest first)
+
+### 2026-11-22: four move rules marked conditional from Learn's move guidance (unreleased upstream change to the rules)
+
+- The first real weekly Learn report upstream ([HCW-MigrateOrchestrator_App#135](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/135))
+  listed rows where Learn's section points to a move-guidance page. Upstream checked each against
+  [virtual machine special cases](https://learn.microsoft.com/azure/azure-resource-manager/management/move-limitations/virtual-machines-move-limitations)
+  and [networking moves](https://learn.microsoft.com/azure/azure-resource-manager/management/move-limitations/networking-move-limitations)
+  in [HCW-MigrateOrchestrator_App#136](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/136):
+  virtual machines and virtual networks become "conditional" for resource group and subscription moves, network
+  interfaces for subscription moves, and scale sets for both with human review. Each limit shows in an assessment as a
+  "Constraint: …" line. Each changed rule is `ruleVersion` 1.1.0; the rules snapshot stays 1.1.35 with a new checksum.
+- **Reaches this edition? Yes, at the next upstream release.** The core tarball ships `rules/azure` and
+  `rules/snapshots`. A visitor who assesses a resource group or subscription move in the pane will see lower confidence
+  (by 0.1) and the new constraints for those four types, and a human-review blocker on scale sets. Region moves are
+  unchanged. No test here names these rules (searched 2026-11-22).
+- **Action here:** none until the release. When the `core-update` pull request arrives, run `npm ci`, `npm test` and
+  `npm run e2e`.
+
+### 2026-11-18: the Learn move-support parser reads the live page (merged upstream 2026-11-22, not yet released)
+
+- Upstream's weekly rules check compares the rules with Microsoft Learn's
+  [move-support page](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/move-support-resources).
+  Since 2026-10-19 its parser had read 0 rows from that page, because the page's tables sit inside quote blocks (each line
+  starts with `> `), so every weekly report said "0 disagreements". The ten rules that disagreed were fixed by hand in
+  [HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131) (entry below); the parser fix is in
+  [HCW-MigrateOrchestrator_App#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133): quoted lines are read, HTML comments are skipped, a type listed twice uses its first row,
+  lower-case provider headings match, and a plain "Yes" under a note that links move guidance reads as `conditional`.
+  No rule changed.
+- **Reaches this edition? Only with the next upstream release, and only as types.** `parseLearnMoveSupport` and
+  `diffRulesAgainstMatrix` are exported from `@hybridcloudworks/migration-core/evidence-engine`. In that release
+  `LearnMatrixRow` gains the optional fields `tableInSection` and `guidance`, `MatrixDiff` gains the optional
+  `learnGuidance`, a new function `learnLinkToUrl` is exported, and both functions return different results for the live
+  page. This edition imports only `loadRules`
+  and `defaultRulesDir` from that subpath (`apps/lab-api/src/app.ts`), so nothing here calls the changed functions. This
+  change leaves the rules the core tarball ships as they are.
+- **Action here:** none now. When `core-update` proposes the release that carries this, run `npm ci` and `npm test` as
+  for any release.
 
 ### 2026-11-16: ten move-support rules corrected against Microsoft Learn (reaches this edition at the next upstream release)
 
