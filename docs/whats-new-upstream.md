@@ -9,16 +9,16 @@ Read it before you change behaviour, bump the upstream pin or review a `core-upd
 upstream, whether it reaches this edition, and what to run. Add an entry when a change lands upstream that reaches this
 edition (the upstream `CLAUDE.md` asks for the same), newest first, and keep the table below true.
 
-## Current upstream state (checked 2026-10-27; the first and sixth rows re-read 2026-11-21)
+## Current upstream state (checked 2026-10-27; the first and sixth rows re-read 2026-11-22)
 
 | Question | Answer |
 |---|---|
-| Upstream `main` | `26c7ef3` on 2026-11-16 (merge of upstream pull request [#129](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/129), a GitHub Actions update), 57 commits after the `v0.4.1` tag commit `b9fc763` |
+| Upstream `main` | `c24d726` on 2026-11-21 (merge of upstream pull request [#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133), the Learn parser fix), 60 commits after the `v0.4.1` tag commit `b9fc763` |
 | Latest upstream release | `v0.4.1`, published 2026-10-27, tag commit `b9fc763` (annotated tag) |
 | What this edition pins | `v0.4.1` (adopted by [pull request 54](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/pull/54), merged 2026-10-27): `migration-core` and `migration-ui` as release tarballs, by URL in `package.json` and by integrity hash in `package-lock.json` |
 | Drift between pin and latest release | None |
 | Do the pinned hashes match the published assets? | Yes. The two `v0.4.1` tarballs were downloaded on 2026-10-27 and their SHA-512 values equal the `integrity` entries in `package-lock.json` (`sha512-hKnjvlbs…` for core, `sha512-MQxLdcd2…` for ui) |
-| Unreleased upstream changes that touch the tarballs | Two, read 2026-11-21. **On `main`:** `scripts/assemble-packages.mjs` now copies the root `LICENSE` into both tarballs and lists it in their `files` (upstream [#124](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/124), merged 2026-11-14); no code changes. **Open:** [HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131) changes ten rules in `rules/azure` and `rules/snapshots`, which the core tarball ships (entry below). GitHub's compare of `v0.4.1` with `main` lists 60 changed files; the others under `packages/` are tests, which the tarballs do not ship, and the root `package.json` changed only a development dependency (`@types/node`). **Also on `main` since 2026-11-22:** [HCW-MigrateOrchestrator_App#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133) (merge `c24d726`) changes `packages/evidence-engine`, the Learn parser (see the 2026-11-18 entry), so the next release changes the core tarball again. **Pending (2026-11-22):** [HCW-MigrateOrchestrator_App#136](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/136) changes four rules (see the 2026-11-22 entry) |
+| Unreleased upstream changes that touch the tarballs | Five, read 2026-11-22. **On `main`:** `scripts/assemble-packages.mjs` now copies the root `LICENSE` into both tarballs and lists it in their `files` (upstream [#124](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/124), merged 2026-11-14); no code changes. Ten rules in `rules/azure` and `rules/snapshots`, which the core tarball ships, changed in [HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131), merged 2026-11-21 (entry below). The Learn parser in the core tarball reads the live page since [HCW-MigrateOrchestrator_App#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133), merged 2026-11-21; this edition does not call it. **Open:** [HCW-MigrateOrchestrator_App#134](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/134) changes how `parseLearnMoveSupport` and `diffRulesAgainstMatrix` in the core tarball read a type with a label in brackets (entry below), and [HCW-MigrateOrchestrator_App#136](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/136) marks four rules in `rules/azure` conditional (entry below). GitHub's compare of `v0.4.1` with `main` lists 72 changed files; apart from those above, the ones under `packages/` are tests, which the tarballs do not ship, and the root `package.json` changed only a development dependency (`@types/node`) |
 | Tags | Upstream has an active ruleset, "Protect release tags", on `v*` tags. It blocks creating, updating and deleting them except for a repository role that can bypass it (the owner's `v0.4.1` tag push reported "Bypassed rule violations"). Before 2026-10-24 the `v0.3.1` tag had been moved once; that release is no longer pinned. The `integrity` hashes in `package-lock.json` would catch a changed file under a pinned tag |
 
 Dates in this file are in US Central time; GitHub shows UTC, so a release can appear a day later there.
@@ -29,6 +29,23 @@ only the rule-diff report files `rules/reports/learn-diff.json` and `rules/repor
 The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of both `package.json` files and, in `migration-ui`, the exact `migration-core` version it depends on (107 files in core and 30 in ui, in both releases). Upstream CI on `main` at `b9fc763` passed (the `ci`, `security` and `scanners` runs).
 
 ## Entries (newest first)
+
+### 2026-11-22: the Learn move-support parser drops the label after a resource type (reaches this edition at the next upstream release; nothing here uses it)
+
+- Some rows of Microsoft Learn's move-support tables
+  ([Azure resource types for move operations](https://learn.microsoft.com/azure/azure-resource-manager/management/move-support-resources))
+  add a label in brackets after the type, such as `certificates (managed)` or `vpngateways (Virtual WAN)`. The App's
+  `parseLearnMoveSupport` kept the label as part of the type (`microsoft.web/certificates (managed)`), so those rows never
+  matched a rule. In [HCW-MigrateOrchestrator_App#134](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/134) the label moves to a
+  new optional `variant` field on `LearnMatrixRow`; `diffRulesAgainstMatrix`, which since
+  [HCW-MigrateOrchestrator_App#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133) uses the first row for a type Learn lists twice, now prefers a row
+  without a label to one with a label, and names a row's label in a new optional `learnVariant` field on `MatrixDiff`.
+  On the live page the types without a rule go from 721 to 719. No rule changes.
+- **Reaches this edition? Yes, at the next upstream release, but nothing here calls it.** The four names are exported by
+  `@hybridcloudworks/migration-core`, which the core tarball ships. A search of this repository on 2026-11-22 found no
+  use of `parseLearnMoveSupport`, `diffRulesAgainstMatrix`, `LearnMatrixRow` or `MatrixDiff` (only this file names
+  them), so no code, test or pane screen here changes.
+- **Action here:** none until the release. The `core-update` pull request for it runs `npm ci` and `npm test` as usual.
 
 ### 2026-11-22: four move rules marked conditional from Learn's move guidance (unreleased upstream change to the rules)
 
