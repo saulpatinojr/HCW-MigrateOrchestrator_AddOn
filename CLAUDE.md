@@ -25,4 +25,9 @@ and `@hybridcloudworks/migration-ui`. Nothing here may reach Azure; `tests/secur
   No vendor names in anything a visitor can read in the pane.
 - No secrets, tokens, customer inventories or real tenant/subscription IDs anywhere, including fixtures and tests.
 - Owner-pasteable commands: no placeholders; bash and PowerShell both acceptable.
+- A new credential (a token, key, password or certificate), or a workflow that reads one, is registered in the website repository
+  in the same piece of work: a row in its credential register, which gives it a renewal reminder, and its rows in the two standards
+  pages. The rule and the files are in that repository's `.claude/CLAUDE.md`, under "A new credential arrives with its register
+  row, its test and its reminder". `CLAUDE_CODE_OAUTH_TOKEN`, which `.github/workflows/claude.yml` signs in with, is registered
+  there as `gh-claude-code-oauth-token`; it expires a year after the owner makes it.
 - ADRs are recorded upstream (shared numbering); copy edition-relevant ones into `docs/adr/`. Record limitations in `VALIDATION.md`.
