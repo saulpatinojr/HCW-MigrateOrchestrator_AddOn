@@ -9,16 +9,16 @@ Read it before you change behaviour, bump the upstream pin or review a `core-upd
 upstream, whether it reaches this edition, and what to run. Add an entry when a change lands upstream that reaches this
 edition (the upstream `CLAUDE.md` asks for the same), newest first, and keep the table below true.
 
-## Current upstream state (checked 2026-10-27; the first and sixth rows re-read 2026-11-14)
+## Current upstream state (checked 2026-10-27; the first and sixth rows re-read 2026-11-21)
 
 | Question | Answer |
 |---|---|
-| Upstream `main` | `7ea7612` on 2026-11-14 (merge of upstream pull request [#123](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/123), round four of the workflow runtime check), 51 commits after the `v0.4.1` tag commit `b9fc763` |
+| Upstream `main` | `26c7ef3` on 2026-11-16 (merge of upstream pull request [#129](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/129), a GitHub Actions update), 57 commits after the `v0.4.1` tag commit `b9fc763` |
 | Latest upstream release | `v0.4.1`, published 2026-10-27, tag commit `b9fc763` (annotated tag) |
 | What this edition pins | `v0.4.1` (adopted by [pull request 54](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/pull/54), merged 2026-10-27): `migration-core` and `migration-ui` as release tarballs, by URL in `package.json` and by integrity hash in `package-lock.json` |
 | Drift between pin and latest release | None |
 | Do the pinned hashes match the published assets? | Yes. The two `v0.4.1` tarballs were downloaded on 2026-10-27 and their SHA-512 values equal the `integrity` entries in `package-lock.json` (`sha512-hKnjvlbs…` for core, `sha512-MQxLdcd2…` for ui) |
-| Unreleased upstream changes that touch the tarballs | None found on 2026-11-14. GitHub's compare of `v0.4.1` with `main` lists 40 changed files, none under `packages/`, none in the four `rules/` folders the core tarball ships (only `rules/reports/` changed) and not `scripts/assemble-packages.mjs`; the root `package.json` changed only a development dependency (`@types/node`). The rest is workflows, tests, documents, the appliance and its infrastructure |
+| Unreleased upstream changes that touch the tarballs | Two, read 2026-11-21. **On `main`:** `scripts/assemble-packages.mjs` now copies the root `LICENSE` into both tarballs and lists it in their `files` (upstream [#124](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/124), merged 2026-11-14); no code changes. **Open:** [HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131) changes ten rules in `rules/azure` and `rules/snapshots`, which the core tarball ships (entry below). GitHub's compare of `v0.4.1` with `main` lists 60 changed files; the others under `packages/` are tests, which the tarballs do not ship, and the root `package.json` changed only a development dependency (`@types/node`) |
 | Tags | Upstream has an active ruleset, "Protect release tags", on `v*` tags. It blocks creating, updating and deleting them except for a repository role that can bypass it (the owner's `v0.4.1` tag push reported "Bypassed rule violations"). Before 2026-10-24 the `v0.3.1` tag had been moved once; that release is no longer pinned. The `integrity` hashes in `package-lock.json` would catch a changed file under a pinned tag |
 
 Dates in this file are in US Central time; GitHub shows UTC, so a release can appear a day later there.
@@ -29,6 +29,28 @@ only the rule-diff report files `rules/reports/learn-diff.json` and `rules/repor
 The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of both `package.json` files and, in `migration-ui`, the exact `migration-core` version it depends on (107 files in core and 30 in ui, in both releases). Upstream CI on `main` at `b9fc763` passed (the `ci`, `security` and `scanners` runs).
 
 ## Entries (newest first)
+
+### 2026-11-16: ten move-support rules corrected against Microsoft Learn (reaches this edition at the next upstream release)
+
+- The App's weekly Learn report ([HCW-MigrateOrchestrator_App#130](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/130))
+  said the rules and Learn agreed, but it had read no rows from Learn: the Learn page puts its tables inside quote blocks
+  and the App's parser skips those lines. The comparison was run by hand against the live page
+  ([Azure resource types for move operations](https://learn.microsoft.com/azure/azure-resource-manager/management/move-support-resources)),
+  and the App changes ten rules in `rules/azure` in [HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131): metric alerts,
+  user-assigned managed identities, NAT gateways and application gateways become "unsupported" for resource group and
+  subscription moves (recreate instead); private endpoints, load balancers (subscription), public IP addresses
+  (subscription) and snapshots become "conditional"; VM extensions become "unsupported" for a region move; Azure SQL
+  databases become "conditional" for a region move. Snapshots, load balancers and private endpoints also require human
+  review, because what decides the move (full or incremental, Basic or Standard SKU, which private-link resource) is not
+  in the inventory; such a resource shows the blocker "Rule requires human review before this disposition is accepted".
+  Each is `ruleVersion` 1.1.0; the rules snapshot becomes 1.1.35.
+- **Reaches this edition? Yes, at the next upstream release.** The core tarball ships `rules/azure` and
+  `rules/snapshots` (`scripts/assemble-packages.mjs`), so the `core-update` pull request for that release brings the new
+  rules. No application code or test in this repository names these rules or the snapshot version (searched 2026-11-16; only this file does), so no test here is
+  expected to change, but an assessment a visitor runs in the pane will show the new support states, reason codes and
+  sources for those resource types.
+- **Action here:** none until the release. When the `core-update` pull request arrives, run `npm ci`, `npm test` and
+  `npm run e2e`, and check that the pane shows snapshot 1.1.35 or later.
 
 ### 2026-11-14: the sample export moves to the HCW naming convention (sample data, not an upstream release)
 
