@@ -3,6 +3,38 @@
 Web-front edition (`saulpatinojr/HCW-MigrateOrchestrator_AddOn`, ADR-0028). Everything below distinguishes what was executed
 from what was not. Engine, rule and UI validation lives upstream in `saulpatinojr/HCW-MigrateOrchestrator_App/VALIDATION.md`.
 
+## Release 0.3.5 prepared: rebuild for Debian's glibc fix (2026-11-23)
+
+What changed: the version only (0.3.4 to 0.3.5 in the root and both workspace `package.json` files, `package-lock.json`
+and `repository.manifest.json`), the `CHANGELOG.md` section for 0.3.5, and the release named in
+`docs/deployment/lab-host.md`. This run publishes nothing. The release exists so a new `v0.3.5` tag rebuilds the lab
+image with Debian's fixed `glibc` (`libc6` and `libc-bin` `2.41-12+deb13u5`) for CVE-2026-19499 and CVE-2026-5435, which
+Docker Scout found in the published `v0.3.4` image (website run
+https://github.com/saulpatinojr/HCW-HybridCloudWorks/actions/runs/45092780931, job "Scout migration").
+
+- **Environment:** Linux authoring sandbox, Node 22.23.5 and npm 10.9.9 (the project asks for Node 26, so `npm ci`
+  printed its engine warning; CI's `build-test` job runs the same commands on Node 26).
+- **Executed:** the eight version lines were edited by hand, four in the manifests and four in `package-lock.json`
+  (the lock diff is the four project version lines and nothing else; `npm version` was not used because this npm
+  rewrites other lock fields); `npm ci`; `npm test` — **262 pass, 0 fail** (includes
+  `tests/version-alignment.test.mjs` and `tests/contract/lab-image.test.mjs`); `npm run typecheck`;
+  `node scripts/check-release-version.mjs --tag v0.3.5` and `--rehearse` — both print
+  `release version consistent: 0.3.5, tag v0.3.5`.
+- **Checked, read-only:** the Debian security tracker lists both CVEs as fixed for trixie in `glibc 2.41-12+deb13u5`, and
+  the main `trixie` `Packages` index on deb.debian.org for amd64 and arm64 carries `libc6` and `libc-bin` at that version
+  (its `Release` file says Debian 13.8, dated 2026-11-21). Docker Hub's tag record and mirror.gcr.io both still give
+  `sha256:e6bedef2…` for `node:26-trixie-slim` and `node:26-slim`, the digest `Dockerfile.lab` pins; its linux/amd64
+  image was pushed on 2026-11-11, ten days before Debian 13.8, so the base itself still carries the old packages and
+  there is no newer base to pin. `infrastructure/docker/Dockerfile.lab`'s final stage runs
+  `apt-get -o Acquire::Retries=0 update --error-on=any` and `apt-get -o Acquire::Retries=0 upgrade -y`, with
+  `ARG PUBLISH_CACHE_BUST=` printed in the same `RUN`, and `publish-images.yml` passes a per-run value to both builds, so
+  a publish run cannot reuse an older upgrade layer.
+- **Not executed:** `npm run e2e` (no pane or API code changed; CI's `e2e` job runs it); a local image build and a look at `libc6` inside it (the sandbox has the Docker command but no
+  Docker daemon); Docker Scout; the `publish-images.yml` dry run on GitHub (after the merge, on the merge commit the tag
+  will point at); actionlint, zizmor and hadolint (no workflow or Dockerfile changed; the `build-test` job runs them).
+  Docker Hub's registry answered the anonymous manifest request for the python and node repositories with HTTP 429
+  (too many requests) after the first one, so the digests above come from its tag record and from mirror.gcr.io.
+
 ## The sample export on the HCW naming convention (2026-11-14, owner decision)
 
 What changed: `samples/resources-csv/sample-resources.csv` (names and the subscription id only; byte for byte the App's
@@ -234,7 +266,7 @@ image with Debian's fixed `zlib` for CVE-2026-76844 and CVE-2026-85091, which Do
   `apt-get -o Acquire::Retries=0 update --error-on=any` and `apt-get -o Acquire::Retries=0 upgrade -y`, with
   `ARG PUBLISH_CACHE_BUST=` printed in the same `RUN`, and `publish-images.yml` passes a per-run value to both builds, so a
   publish run cannot reuse an older upgrade layer.
-- **Not executed:** a local image build and a look at `zlib1g` inside it (no Docker daemon in this sandbox); Docker Scout;
+- **Not executed:** `npm run e2e` (no pane or API code changed; CI's `e2e` job runs it); a local image build and a look at `zlib1g` inside it (no Docker daemon in this sandbox); Docker Scout;
   the `publish-images.yml` dry run on GitHub (after the merge, on the merge commit the tag will point at); actionlint,
   zizmor and hadolint (no workflow or Dockerfile changed; the `build-test` job runs them).
 
