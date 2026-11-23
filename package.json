@@ -27,8 +27,8 @@
     "package": "bash scripts/package-repository.sh"
   },
   "dependencies": {
-    "@hybridcloudworks/migration-core": "https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/releases/download/v0.4.1/hybridcloudworks-migration-core-0.4.1.tgz",
-    "@hybridcloudworks/migration-ui": "https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/releases/download/v0.4.1/hybridcloudworks-migration-ui-0.4.1.tgz"
+    "@hybridcloudworks/migration-core": "https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/releases/download/v0.4.3/hybridcloudworks-migration-core-0.4.3.tgz",
+    "@hybridcloudworks/migration-ui": "https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/releases/download/v0.4.3/hybridcloudworks-migration-ui-0.4.3.tgz"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
