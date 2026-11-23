@@ -9,16 +9,16 @@ Read it before you change behaviour, bump the upstream pin or review a `core-upd
 upstream, whether it reaches this edition, and what to run. Add an entry when a change lands upstream that reaches this
 edition (the upstream `CLAUDE.md` asks for the same), newest first, and keep the table below true.
 
-## Current upstream state (checked 2026-10-27; the first and sixth rows re-read 2026-11-22)
+## Current upstream state (checked 2026-10-27; the first and sixth rows re-read 2026-11-23)
 
 | Question | Answer |
 |---|---|
-| Upstream `main` | `c24d726` on 2026-11-21 (merge of upstream pull request [#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133), the Learn parser fix), 60 commits after the `v0.4.1` tag commit `b9fc763` |
+| Upstream `main` | `73e3a52` on 2026-11-22 (merge of upstream pull request [HCW-MigrateOrchestrator_App#144](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/144), the Learn product-name rows), 71 commits after the `v0.4.1` tag commit `b9fc763` |
 | Latest upstream release | `v0.4.1`, published 2026-10-27, tag commit `b9fc763` (annotated tag) |
 | What this edition pins | `v0.4.1` (adopted by [pull request 54](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_AddOn/pull/54), merged 2026-10-27): `migration-core` and `migration-ui` as release tarballs, by URL in `package.json` and by integrity hash in `package-lock.json` |
 | Drift between pin and latest release | None |
 | Do the pinned hashes match the published assets? | Yes. The two `v0.4.1` tarballs were downloaded on 2026-10-27 and their SHA-512 values equal the `integrity` entries in `package-lock.json` (`sha512-hKnjvlbs…` for core, `sha512-MQxLdcd2…` for ui) |
-| Unreleased upstream changes that touch the tarballs | Five, read 2026-11-22. **On `main`:** `scripts/assemble-packages.mjs` now copies the root `LICENSE` into both tarballs and lists it in their `files` (upstream [#124](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/124), merged 2026-11-14); no code changes. Ten rules in `rules/azure` and `rules/snapshots`, which the core tarball ships, changed in [HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131), merged 2026-11-21 (entry below). The Learn parser in the core tarball reads the live page since [HCW-MigrateOrchestrator_App#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133), merged 2026-11-21; this edition does not call it. **Open:** [HCW-MigrateOrchestrator_App#134](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/134) changes how `parseLearnMoveSupport` and `diffRulesAgainstMatrix` in the core tarball read a type with a label in brackets (entry below), and [HCW-MigrateOrchestrator_App#136](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/136) marks four rules in `rules/azure` conditional (entry below). GitHub's compare of `v0.4.1` with `main` lists 72 changed files; apart from those above, the ones under `packages/` are tests, which the tarballs do not ship, and the root `package.json` changed only a development dependency (`@types/node`) **Pending (2026-11-22):** [HCW-MigrateOrchestrator_App#141](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/141) fixes a crash in the CSV import (see the 2026-11-22 entry on `__proto__`) |
+| Unreleased upstream changes that touch the tarballs | Seven, read 2026-11-23, all on `main`: `scripts/assemble-packages.mjs` copies the root `LICENSE` into both tarballs ([#124](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/124), merged 2026-11-14; no code change); ten rules in `rules/azure` and `rules/snapshots` ([HCW-MigrateOrchestrator_App#131](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/131), merged 2026-11-21); the Learn parser reads the live page ([HCW-MigrateOrchestrator_App#133](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/133), merged 2026-11-21); the parser drops the label after a type ([HCW-MigrateOrchestrator_App#134](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/134), merged 2026-11-21); four rules marked conditional ([HCW-MigrateOrchestrator_App#136](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/136), merged 2026-11-21); and the CSV and Learn-link crash fixes ([HCW-MigrateOrchestrator_App#141](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/141), merged 2026-11-22), which change source in `csv-ingestion`, `classification-engine` and `terraform-generator`; and the parser flags Learn rows that name a product instead of a resource type ([HCW-MigrateOrchestrator_App#144](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/144), merged 2026-11-22). Each has an entry below. GitHub's compare of `v0.4.1` with `main` lists 84 changed files; the only non-test source files among them under `packages/` are those four (`learn-matrix.ts`, `normalize.ts`, `classify.ts`, `state-impact.ts`), and the root `package.json` changed only development dependencies (`@types/node`, and `fast-check`, which the tarballs do not ship). This edition calls none of the Learn functions |
 | Tags | Upstream has an active ruleset, "Protect release tags", on `v*` tags. It blocks creating, updating and deleting them except for a repository role that can bypass it (the owner's `v0.4.1` tag push reported "Bypassed rule violations"). Before 2026-10-24 the `v0.3.1` tag had been moved once; that release is no longer pinned. The `integrity` hashes in `package-lock.json` would catch a changed file under a pinned tag |
 
 Dates in this file are in US Central time; GitHub shows UTC, so a release can appear a day later there.
@@ -29,6 +29,21 @@ only the rule-diff report files `rules/reports/learn-diff.json` and `rules/repor
 The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of both `package.json` files and, in `migration-ui`, the exact `migration-core` version it depends on (107 files in core and 30 in ui, in both releases). Upstream CI on `main` at `b9fc763` passed (the `ci`, `security` and `scanners` runs).
 
 ## Entries (newest first)
+
+### 2026-11-23: the Learn parser flags rows that name a product, not a resource type (merged upstream, not yet released; nothing here uses it)
+
+- Microsoft Learn's move-support page
+  ([Azure resource types for move operations](https://learn.microsoft.com/azure/azure-resource-manager/management/move-support-resources))
+  has two rows whose first cell is a product name: "Cognitive Search" under Microsoft.CognitiveServices and "AKS cluster"
+  under Microsoft.DevSpaces. The App's parser made them into types with a space in them. In
+  [HCW-MigrateOrchestrator_App#144](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/144) such a row gets a new optional
+  `notAResourceType: true` on `LearnMatrixRow`, and `diffRulesAgainstMatrix` leaves it out of the comparison and of the
+  types without a rule, and returns it in a new `notTypes` list. On the live page the types without a rule go from 719 to
+  718. No rule changes.
+- **Reaches this edition? Yes, at the next upstream release, but nothing here calls it.** A search of this repository on
+  2026-11-23 found no use of `parseLearnMoveSupport`, `diffRulesAgainstMatrix` or `LearnMatrixRow` outside this file, so
+  no code, test or pane screen here changes.
+- **Action here:** none until the release. The `core-update` pull request for it runs `npm ci` and `npm test` as usual.
 
 ### 2026-11-22: CSV types named `__proto__` or `constructor` no longer crash the upload (unreleased upstream fix to `migration-core`)
 
