@@ -30,6 +30,20 @@ The extracted `v0.4.0` and `v0.4.1` tarballs differ only in the `version` of bot
 
 ## Entries (newest first)
 
+### 2026-11-24: upstream releases will carry their build provenance as a file (merged upstream, not yet released; nothing here changes)
+
+- From the first release after
+  [HCW-MigrateOrchestrator_App#150](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/150) (merged 2026-11-24), an upstream
+  release has an eleventh file, `amo-<version>.intoto.jsonl`. It holds the build provenance of the other ten files (the signed
+  statements of which workflow built each one, from which commit), one signed bundle per line. Until now that proof was only in
+  GitHub's attestation store. The decision is upstream ADR-0035.
+- **Does it reach this edition? No.** `core-update.yml` reads the tag name of the latest release and downloads the two tarballs
+  by their exact address; `package-lock.json` checks them by integrity hash. It never lists a release's files, the names of the
+  two tarballs are unchanged, and no `packages/*` public surface changed.
+- **What to run:** nothing. Optional, after the next upstream release: a tarball can be checked against the release's own file
+  with `gh attestation verify hybridcloudworks-migration-core-<version>.tgz --repo saulpatinojr/HCW-MigrateOrchestrator_App --bundle amo-<version>.intoto.jsonl`.
+  This edition does not verify attestations today; whether it should is its owner's decision.
+
 ### 2026-11-23: the Learn parser flags rows that name a product, not a resource type (merged upstream, not yet released; nothing here uses it)
 
 - Microsoft Learn's move-support page

@@ -5,7 +5,7 @@ The engine, rules, CLI and UI components are versioned and released upstream in 
 
 ## Unreleased
 
-Nothing yet.
+- **`docs/whats-new-upstream.md` notes that upstream releases will carry their build provenance as a file** ([HCW-MigrateOrchestrator_App#150](https://github.com/saulpatinojr/HCW-MigrateOrchestrator_App/pull/150)). An upstream release gains an eleventh file, `amo-<version>.intoto.jsonl`. Nothing here changes: this edition fetches the two tarballs by exact address and checks them by integrity hash.
 
 ## 0.3.5 — 2026-11-23: the lab image is rebuilt so Debian's fixed glibc is included
 
